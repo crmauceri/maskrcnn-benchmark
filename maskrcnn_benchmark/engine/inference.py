@@ -66,7 +66,7 @@ def inference(
     device = torch.device(device)
     num_devices = (
         torch.distributed.get_world_size()
-        if torch.distributed.is_initialized()
+        if torch.distributed.is_available() and torch.distributed.is_initialized()
         else 1
     )
     logger = logging.getLogger("maskrcnn_benchmark.inference")
