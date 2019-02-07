@@ -21,7 +21,7 @@ MODEL:
     PREDICTOR: "FPNPredictor"
 DATASETS:
   TRAIN: ("coco_2014_train", "coco_2014_valminusminival")
-  TEST: ("coco_2014_minival",)
+  TEST: ("sunspot",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:
