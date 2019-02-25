@@ -11,7 +11,37 @@ class DatasetCatalog(object):
             "img_dir": "sunspot/images",
             "ann_file": "sunspot/annotations/instances.json",
             "refer_file": "sunspot/annotations/refs(boulder).p",
-            "vocab_file": "sunspot/annotations/vocab.txt"
+            "vocab_file": "vocab_file.txt"
+        },
+        "refcocog_google":{
+            "img_dir": "coco/train2014",
+            "ann_file": "coco/refcocog/instances.json",
+            "refer_file": "coco/refcocog/refs(google).p",
+            "vocab_file": "vocab_file.txt"
+        },
+        "refcocog_umc": {
+            "img_dir": "coco/train2014",
+            "ann_file": "coco/refcocog/instances.json",
+            "refer_file": "coco/refcocog/refs(umd).p",
+            "vocab_file": "vocab_file.txt"
+        },
+        "refcoco+": {
+            "img_dir": "coco/train2014",
+            "ann_file": "coco/refcoco+/instances.json",
+            "refer_file": "coco/refcoco+/refs(unc).p",
+            "vocab_file": "vocab_file.txt"
+        },
+        "refcoco_google": {
+            "img_dir": "coco/train2014",
+            "ann_file": "coco/refcoco/instances.json",
+            "refer_file": "coco/refcoco/refs(google).p",
+            "vocab_file": "vocab_file.txt"
+        },
+        "refcoco_unc": {
+            "img_dir": "coco/train2014",
+            "ann_file": "coco/refcoco/instances.json",
+            "refer_file": "coco/refcoco/refs(unc).p",
+            "vocab_file": "vocab_file.txt"
         },
         "coco_2017_train": {
             "img_dir": "coco/train2017",
@@ -98,7 +128,20 @@ class DatasetCatalog(object):
 
     @staticmethod
     def get(name):
-        if "coco" in name:
+        if "sunspot" in name or "ref" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                img_root=os.path.join(data_dir, attrs["img_dir"]),
+                ann_file=os.path.join(data_dir, attrs["ann_file"]),
+                ref_file=os.path.join(data_dir, attrs["refer_file"]),
+                vocab_file=os.path.join(data_dir, attrs["vocab_file"])
+            )
+            return dict(
+                factory="ReferExpressionDataset",
+                args=args,
+            )
+        elif "coco" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(
@@ -118,19 +161,6 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="PascalVOCDataset",
-                args=args,
-            )
-        elif "sunspot" in name:
-            data_dir = DatasetCatalog.DATA_DIR
-            attrs = DatasetCatalog.DATASETS[name]
-            args = dict(
-                img_root=os.path.join(data_dir, attrs["img_dir"]),
-                ann_file=os.path.join(data_dir, attrs["ann_file"]),
-                ref_file=os.path.join(data_dir, attrs["refer_file"]),
-                vocab_file=os.path.join(data_dir, attrs["vocab_file"])
-            )
-            return dict(
-                factory="ReferExpressionDataset",
                 args=args,
             )
         raise RuntimeError("Dataset not available: {}".format(name))
