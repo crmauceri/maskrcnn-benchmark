@@ -9,7 +9,9 @@ class DatasetCatalog(object):
     DATASETS = {
         "sunspot": {
             "img_dir": "sunspot/images",
-            "ann_file": "sunspot/annotations/instances.json"
+            "ann_file": "sunspot/annotations/instances.json",
+            "refer_file": "sunspot/annotations/refs(boulder).p",
+            "vocab_file": "sunspot/annotations/vocab.txt"
         },
         "coco_2017_train": {
             "img_dir": "coco/train2017",
@@ -96,7 +98,7 @@ class DatasetCatalog(object):
 
     @staticmethod
     def get(name):
-        if "coco" in name or "sunspot" in name:
+        if "coco" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(
@@ -116,6 +118,19 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="PascalVOCDataset",
+                args=args,
+            )
+        elif "sunspot" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                img_root=os.path.join(data_dir, attrs["img_dir"]),
+                ann_file=os.path.join(data_dir, attrs["ann_file"]),
+                ref_file=os.path.join(data_dir, attrs["refer_file"]),
+                vocab_file=os.path.join(data_dir, attrs["vocab_file"])
+            )
+            return dict(
+                factory="ReferExpressionDataset",
                 args=args,
             )
         raise RuntimeError("Dataset not available: {}".format(name))
