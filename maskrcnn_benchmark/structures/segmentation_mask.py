@@ -18,27 +18,27 @@ class Mask(object):
         width, height = size
         if isinstance(segm, Mask):
             mask = segm.mask
-        else:
-            if type(segm) == list:
-                # polygons
-                mask = Polygons(segm, size, 'polygon').convert('mask').to(dtype=torch.float32)
-            elif type(segm) == dict and 'counts' in segm:
-                if type(segm['counts']) == list:
-                    # uncompressed RLE
-                    h, w = segm['size']
-                    rle = mask_utils.frPyObjects(segm, h, w)
-                    mask = mask_utils.decode(rle)
-                    mask = torch.from_numpy(mask).to(dtype=torch.float32)
-                else:
-                    # compressed RLE
-                    mask = mask_utils.decode(segm)
-                    mask = torch.from_numpy(mask).to(dtype=torch.float32)
+        elif isinstance(segm, Polygons):
+            mask = Polygons(segm, size, 'polygon').convert('mask').to(dtype=torch.float32)
+        #RLE
+        elif isinstance(segm, dict) and 'counts' in segm:
+            if isinstance(segm['counts'], list):
+                # uncompressed RLE
+                h, w = segm['size']
+                rle = mask_utils.frPyObjects(segm, h, w)
+                mask = mask_utils.decode(rle)
+                mask = torch.from_numpy(mask).to(dtype=torch.float32)
             else:
-                # binary mask
-                if type(segm) == np.ndarray:
-                    mask = torch.from_numpy(segm).to(dtype=torch.float32)
-                else: # torch.Tensor
-                    mask = segm.to(dtype=torch.float32)
+                # compressed RLE
+                mask = mask_utils.decode(segm)
+                mask = torch.from_numpy(mask).to(dtype=torch.float32)
+        # binary mask
+        elif isinstance(segm, np.ndarray):
+            mask = torch.from_numpy(segm).to(dtype=torch.float32)
+        elif isinstance(segm, torch.Tensor): # torch.Tensor
+            mask = segm.to(dtype=torch.float32)
+        else:
+            raise TypeError("Unsupported Mask Type")
         self.mask = mask
         self.size = size
         self.mode = mode
