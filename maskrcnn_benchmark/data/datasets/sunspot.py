@@ -14,7 +14,7 @@ class ReferExpressionDataset(COCODataset):
         self, ann_file, img_root, ref_file, vocab_file, remove_images_without_annotations, \
             transforms=None, disable_cuda=False,
     ):
-        super(ReferExpressionDataset, self).__init__(ann_file, img_root, remove_images_without_annotations, transforms)
+        super().__init__(ann_file, img_root, remove_images_without_annotations, transforms)
 
         # Fix the image ids assigned by the torchvision dataset loader
         self.ids = dict(zip(self.coco.imgs.keys(), self.coco.imgs.keys()))
@@ -73,7 +73,7 @@ class ReferExpressionDataset(COCODataset):
         elif split == 'val':
             img_idx = self.val_index[idx]
 
-        img, target = super(COCODataset, self).__getitem__(img_idx)
+        img, target, idx = super().__getitem__(img_idx)
         refs = self.coco.imgToRefs[img_idx]
         sents = [ref['sentences'] for ref in refs]
 
