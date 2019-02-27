@@ -12,7 +12,7 @@ from maskrcnn_benchmark.data.datasets.coco import COCODataset
 class ReferExpressionDataset(COCODataset):
     def __init__(
         self, ann_file, img_root, ref_file, vocab_file, remove_images_without_annotations, \
-            transforms=None, disable_cuda=False,
+            transforms=None, disable_cuda=False, active_split=None
     ):
         super().__init__(ann_file, img_root, remove_images_without_annotations, transforms)
 
@@ -24,7 +24,7 @@ class ReferExpressionDataset(COCODataset):
         else:
             self.device = torch.device('cpu')
 
-        self.active_split = None
+        self.active_split = active_split
 
         with open(vocab_file, 'r') as f:
             self.vocab = [v.strip() for v in f.readlines()]
@@ -68,8 +68,8 @@ class ReferExpressionDataset(COCODataset):
             img_idx = self.train_index[idx]
         elif split == 'test':
             img_idx = self.test_index[idx]
-        elif split == 'test_unique':
-            img_idx = self.unique_test_objects[idx]
+        # elif split == 'test_unique':
+        #     img_idx = self.unique_test_objects[idx]
         elif split == 'val':
             img_idx = self.val_index[idx]
 

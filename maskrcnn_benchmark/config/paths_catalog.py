@@ -146,12 +146,13 @@ class DatasetCatalog(object):
     def get(name):
         if "sunspot" in name or "ref" in name:
             data_dir = DatasetCatalog.DATA_DIR
-            attrs = DatasetCatalog.DATASETS[name]
+            attrs = DatasetCatalog.DATASETS[name.split('_')[0]]
             args = dict(
                 img_root=os.path.join(data_dir, attrs["img_dir"]),
                 ann_file=os.path.join(data_dir, attrs["ann_file"]),
                 ref_file=os.path.join(data_dir, attrs["refer_file"]),
-                vocab_file=os.path.join(data_dir, attrs["vocab_file"])
+                vocab_file=os.path.join(data_dir, attrs["vocab_file"]),
+                active_split=name.split('_')[1]
             )
             return dict(
                 factory="ReferExpressionDataset",
