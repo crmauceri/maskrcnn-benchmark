@@ -19,10 +19,10 @@ class ReferExpressionDataset(COCODataset):
         # Fix the image ids assigned by the torchvision dataset loader
         self.ids = dict(zip(self.coco.imgs.keys(), self.coco.imgs.keys()))
 
-        if not disable_cuda and torch.cuda.is_available():
-            self.device = torch.device('cuda')
-        else:
-            self.device = torch.device('cpu')
+        # if not disable_cuda and torch.cuda.is_available():
+        #     self.device = torch.device('cuda')
+        # else:
+        #     self.device = torch.device('cpu')
 
         self.active_split = active_split
 
@@ -128,8 +128,8 @@ class ReferExpressionDataset(COCODataset):
 
         for sent in self.coco.sents:
             padding = [0.0] * (self.max_sent_len - len(self.coco.sents[sent]['vocab']))
-            self.coco.sents[sent]['vocab_tensor'] = torch.tensor(padding + self.coco.sents[sent]['vocab'], dtype=torch.long,
-                                                device=self.device)
+            self.coco.sents[sent]['vocab_tensor'] = torch.tensor(padding + self.coco.sents[sent]['vocab'], dtype=torch.long)
+                                                # device=self.device)
 
         self.index = list(set([self.coco.refs[ref]['image_id'] for ref in self.coco.refs]))
         self.train_index = list(set([self.coco.refs[ref]['image_id'] for ref in self.coco.refs if self.coco.refs[ref]['split'] == 'train']))
