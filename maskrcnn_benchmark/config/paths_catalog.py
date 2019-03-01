@@ -11,7 +11,8 @@ class DatasetCatalog(object):
             "img_dir": "sunspot/images",
             "ann_file": "sunspot/annotations/instances.json",
             "refer_file": "sunspot/annotations/refs(boulder).p",
-            "vocab_file": "vocab_file.txt"
+            "vocab_file": "vocab_file.txt",
+            "has_depth": True
         },
         "refcocog_google":{
             "img_dir": "coco/train2014",
@@ -152,6 +153,7 @@ class DatasetCatalog(object):
                 ann_file=os.path.join(data_dir, attrs["ann_file"]),
                 ref_file=os.path.join(data_dir, attrs["refer_file"]),
                 vocab_file=os.path.join(data_dir, attrs["vocab_file"]),
+                has_depth=attrs["has_depth"],
                 active_split=name.split('_')[1]
             )
             return dict(

@@ -2,8 +2,9 @@ import torch
 import torchvision
 
 import os.path as osp
-import json
+import os
 import pickle
+from PIL import Image
 
 from maskrcnn_benchmark.data.datasets.coco import COCODataset
 
@@ -12,27 +13,24 @@ from maskrcnn_benchmark.data.datasets.coco import COCODataset
 class ReferExpressionDataset(COCODataset):
     def __init__(
         self, ann_file, img_root, ref_file, vocab_file, remove_images_without_annotations, \
-            transforms=None, disable_cuda=False, active_split=None
+            transforms=None, disable_cuda=False, active_split=None, has_depth=False,
     ):
         super().__init__(ann_file, img_root, remove_images_without_annotations, transforms)
 
         # Fix the image ids assigned by the torchvision dataset loader
         self.ids = dict(zip(self.coco.imgs.keys(), self.coco.imgs.keys()))
 
-        # if not disable_cuda and torch.cuda.is_available():
-        #     self.device = torch.device('cuda')
-        # else:
-        #     self.device = torch.device('cpu')
-
+        # Set class variables
         self.active_split = active_split
+        self.has_depth = has_depth
 
+        # Initialize vocabulary
         with open(vocab_file, 'r') as f:
             self.vocab = [v.strip() for v in f.readlines()]
-
-
         self.vocab.extend(['<bos>', '<eos>', '<unk>'])
         self.word2idx = dict(zip(self.vocab, range(1, len(self.vocab) + 1)))
 
+        # Index referring expressions
         self.createRefIndex(ref_file)
 
         # if dataset == 'refcocog':
@@ -74,10 +72,18 @@ class ReferExpressionDataset(COCODataset):
             img_idx = self.val_index[idx]
 
         img, target, idx = super().__getitem__(img_idx)
+        if self.has_depth:
+            hha = self.loadHHA(img_idx)
+        else:
+            hha = None
         refs = self.coco.imgToRefs[img_idx]
-        sents = [ref['sentences'] for ref in refs]
 
-        return img, target, sents
+        # TODO these need work. There are multiple sentences per image and currently they are not properly associated with
+        # bbox or segments and they are getting scrambeled by collation
+        sents = [s['vocab_tensor'] for ref in refs for s in ref['sentences']]
+        sent_idx = [s['sent_id'] for ref in refs for s in ref['sentences']]
+
+        return img, hha, sents,  target, img_idx, sent_idx
 
     def createRefIndex(self, ref_file):
 
@@ -148,3 +154,14 @@ class ReferExpressionDataset(COCODataset):
             else:
                 sent['vocab'].append(unk_index)
         sent['vocab'].append(end_index)
+
+    def loadHHA(self, img_id):
+        dir = self.coco.loadImgs(img_id)[0]['file_name'].split('image')[0]
+        file = [file for file in os.listdir(osp.join(self.root, dir, 'HHA')) if file.endswith('png')][0]
+        path = osp.join(self.root, dir, 'HHA', file)
+
+        img = Image.open(path).convert('RGB')
+        if self.transforms is not None:
+            img = self.transforms(img, None)[0]
+
+        return img

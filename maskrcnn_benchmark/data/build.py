@@ -10,7 +10,7 @@ from maskrcnn_benchmark.utils.imports import import_file
 from . import datasets as D
 from . import samplers
 
-from .collate_batch import BatchCollator
+from .collate_batch import BatchCollator, RefExpBatchCollator
 from .transforms import build_transforms
 
 
@@ -39,6 +39,10 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True):
             args["remove_images_without_annotations"] = is_train
         if data["factory"] == "PascalVOCDataset":
             args["use_difficult"] = not is_train
+        if data["factory"] == "ReferExpressionDataset":
+            collate_fn = RefExpBatchCollator
+        else:
+            collate_fn = BatchCollator
         args["transforms"] = transforms
         # make dataset from factory
         dataset = factory(**args)
@@ -46,14 +50,14 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True):
 
     # for testing, return a list of datasets
     if not is_train:
-        return datasets
+        return datasets, collate_fn
 
     # for training, concatenate all datasets into a single one
     dataset = datasets[0]
     if len(datasets) > 1:
         dataset = D.ConcatDataset(datasets)
 
-    return [dataset]
+    return [dataset], collate_fn
 
 
 def make_data_sampler(dataset, shuffle, distributed):
@@ -151,7 +155,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
     dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
 
     transforms = build_transforms(cfg, is_train)
-    datasets = build_dataset(dataset_list, transforms, DatasetCatalog, is_train)
+    datasets, collate_fn = build_dataset(dataset_list, transforms, DatasetCatalog, is_train)
 
     data_loaders = []
     for dataset in datasets:
@@ -159,7 +163,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
         batch_sampler = make_batch_data_sampler(
             dataset, sampler, aspect_grouping, images_per_gpu, num_iters, start_iter
         )
-        collator = BatchCollator(cfg.DATALOADER.SIZE_DIVISIBILITY)
+        collator = collate_fn(cfg.DATALOADER.SIZE_DIVISIBILITY)
         num_workers = cfg.DATALOADER.NUM_WORKERS
         data_loader = torch.utils.data.DataLoader(
             dataset,
