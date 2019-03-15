@@ -44,6 +44,18 @@ class DatasetCatalog(object):
             "refer_file": "coco/refcoco/refs(unc).p",
             "vocab_file": "vocab_file.txt"
         },
+        "sunrgbd_train": {
+            "img_dir": "SUNRGBD/images",
+            "ann_file": "SUNRGBD/annotations/instances_train.json"
+        },
+        "sunrgbd_val": {
+            "img_dir": "SUNRGBD/images",
+            "ann_file": "SUNRGBD/annotations/instances_val.json"
+        },
+        "sunrgbd_test": {
+            "img_dir": "SUNRGBD/images",
+            "ann_file": "SUNRGBD/annotations/instances_test.json"
+        },
         "coco_2017_train": {
             "img_dir": "coco/train2017",
             "ann_file": "coco/annotations/instances_train2017.json"
@@ -158,6 +170,18 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="ReferExpressionDataset",
+                args=args,
+            )
+        elif "sunrgbd" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                img_root=os.path.join(data_dir, attrs["img_dir"]),
+                ann_file=os.path.join(data_dir, attrs["ann_file"]),
+                has_depth=True,
+            )
+            return dict(
+                factory="HHADataset",
                 args=args,
             )
         elif "coco" in name:

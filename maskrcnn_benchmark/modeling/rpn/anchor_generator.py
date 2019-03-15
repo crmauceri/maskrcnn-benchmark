@@ -6,6 +6,7 @@ import torch
 from torch import nn
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
+from maskrcnn_benchmark.structures.image_list import ImageList
 
 
 class BufferList(nn.Module):
@@ -110,10 +111,14 @@ class AnchorGenerator(nn.Module):
         boxlist.add_field("visibility", inds_inside)
 
     def forward(self, image_list, feature_maps):
+        if isinstance(image_list, ImageList):
+            image_sizes = image_list.image_sizes
+        elif isinstance(image_list, list):
+            image_sizes = image_list
         grid_sizes = [feature_map.shape[-2:] for feature_map in feature_maps]
         anchors_over_all_feature_maps = self.grid_anchors(grid_sizes)
         anchors = []
-        for i, (image_height, image_width) in enumerate(image_list.image_sizes):
+        for i, (image_height, image_width) in enumerate(image_sizes):
             anchors_in_image = []
             for anchors_per_feature_map in anchors_over_all_feature_maps:
                 boxlist = BoxList(

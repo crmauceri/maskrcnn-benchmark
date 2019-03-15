@@ -74,6 +74,9 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         boxes = torch.as_tensor(boxes).reshape(-1, 4)  # guard against no boxes
         target = BoxList(boxes, img.size, mode="xywh").convert("xyxy")
 
+        ids = [obj['id'] for obj in anno]
+        target.add_field("ann_id", ids)
+
         classes = [obj["category_id"] for obj in anno]
         classes = [self.json_category_id_to_contiguous_id[c] for c in classes]
         classes = torch.tensor(classes)
@@ -93,7 +96,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         if self.transforms is not None:
             img, target = self.transforms(img, target)
 
-        return img, target, idx
+        return img, target, self.ids[idx]
 
     def get_img_info(self, index):
         img_id = self.id_to_img_map[index]

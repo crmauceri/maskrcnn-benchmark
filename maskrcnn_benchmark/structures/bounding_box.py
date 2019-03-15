@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import torch
+from .segmentation_mask import SegmentationMask
 
 # transpose
 FLIP_LEFT_RIGHT = 0
@@ -19,10 +20,13 @@ class BoxList(object):
     def __init__(self, bbox, image_size, mode="xyxy"):
         device = bbox.device if isinstance(bbox, torch.Tensor) else torch.device("cpu")
         bbox = torch.as_tensor(bbox, dtype=torch.float32, device=device)
-        if bbox.ndimension() != 2:
+        if bbox.ndimension() == 1:
+            bbox = bbox.unsqueeze(0)
+        elif bbox.ndimension() != 2:
             raise ValueError(
                 "bbox should have 2 dimensions, got {}".format(bbox.ndimension())
             )
+
         if bbox.size(-1) != 4:
             raise ValueError(
                 "last dimenion of bbox should have a "
@@ -120,7 +124,7 @@ class BoxList(object):
         bbox = BoxList(scaled_box, size, mode="xyxy")
         # bbox._copy_extra_fields(self)
         for k, v in self.extra_fields.items():
-            if not isinstance(v, torch.Tensor):
+            if isinstance(v, SegmentationMask):
                 v = v.resize(size, *args, **kwargs)
             bbox.add_field(k, v)
 
@@ -159,7 +163,7 @@ class BoxList(object):
         bbox = BoxList(transposed_boxes, self.size, mode="xyxy")
         # bbox._copy_extra_fields(self)
         for k, v in self.extra_fields.items():
-            if not isinstance(v, torch.Tensor):
+            if isinstance(v, SegmentationMask):
                 v = v.transpose(method)
             bbox.add_field(k, v)
         return bbox.convert(self.mode)
@@ -205,7 +209,16 @@ class BoxList(object):
     def __getitem__(self, item):
         bbox = BoxList(self.bbox[item], self.size, self.mode)
         for k, v in self.extra_fields.items():
-            bbox.add_field(k, v[item])
+            if isinstance(item, torch.Tensor):
+                if isinstance(v, torch.Tensor) or isinstance(v, SegmentationMask):
+                    bbox.add_field(k, v[item])
+                else:
+                    if item.dtype == torch.uint8:
+                        bbox.add_field(k, [v[ind] for ind, i in enumerate(item) if i==1])
+                    else:
+                        bbox.add_field(k, [v[i] for i in item])
+            else:
+                bbox.add_field(k, v[item])
         return bbox
 
     def __len__(self):
@@ -253,6 +266,12 @@ class BoxList(object):
         s += "image_height={}, ".format(self.size[1])
         s += "mode={})".format(self.mode)
         return s
+
+    def to_list(self):
+        bbox_list = []
+        for i in range(len(self)):
+            bbox_list.append(self[i])
+        return bbox_list
 
 
 if __name__ == "__main__":
