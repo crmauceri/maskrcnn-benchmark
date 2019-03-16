@@ -94,6 +94,7 @@ _C.MODEL.BACKBONE.CONV_BODY = "R-50-C4"
 _C.MODEL.BACKBONE.FREEZE_CONV_BODY_AT = 2
 # GN for backbone
 _C.MODEL.BACKBONE.USE_GN = False
+_C.MODEL.BACKBONE.DEPTH = False
 
 
 # ---------------------------------------------------------------------------- #

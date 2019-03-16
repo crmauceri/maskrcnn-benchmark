@@ -48,9 +48,13 @@ class TensorList(object):
 
     def __getitem__(self, item):
         tensor = TensorList(self.tensor[item])
+        if isinstance(item, int):
+            tensor.tensor = tensor.tensor.unsqueeze(0)
         for k, v in self.extra_fields.items():
-            if isinstance(v, torch.Tensor) or isinstance(item, int):
+            if isinstance(v, torch.Tensor):
                 tensor.add_field(k, v[item])
+            elif isinstance(item, int):
+                tensor.add_field(k, [v[item]])
             else:
                 tensor.add_field(k, [v[ind] for ind, i in enumerate(item) if i == 1])
         return tensor

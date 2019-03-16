@@ -3,7 +3,7 @@ MODEL:
   WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
   BACKBONE:
     CONV_BODY: "R-50-FPN"
-    DEPTH: True
+    DEPTH: False
   RESNETS:
     BACKBONE_OUT_CHANNELS: 256
   LSTM:
@@ -35,8 +35,8 @@ MODEL:
     SHARE_BOX_FEATURE_EXTRACTOR: False
   MASK_ON: True
 DATASETS:
-  TRAIN: ("sunspot_train", "sunspot_val")
-  TEST: ("sunspot_test",)
+  TRAIN: ("sunspotnodepth_train", "sunspotnodepth_val")
+  TEST: ("sunspotnodepth_test",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:

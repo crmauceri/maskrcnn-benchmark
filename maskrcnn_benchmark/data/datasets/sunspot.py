@@ -4,6 +4,7 @@ import os.path as osp
 import os
 import pickle
 from PIL import Image
+from random import randint
 
 from maskrcnn_benchmark.data.datasets.coco import COCODataset
 from maskrcnn_benchmark.structures.tensorlist import TensorList
@@ -30,9 +31,6 @@ class HHADataset(COCODataset):
             hha = self.loadHHA(image_idx)
         else:
             hha = None
-
-        if img.shape != hha.shape:
-            print("Error")
 
         return img, hha, target, image_idx
 
@@ -117,6 +115,10 @@ class ReferExpressionDataset(HHADataset):
         sents.add_field('tokens', [s['tokens'] for ref in refs for s in ref['sentences']])
         sents.add_field('img_id', [s['sent_id'].split('_')[1] for ref in refs for s in ref['sentences']])
         sents.add_field('ann_id', [s['sent_id'].split('_', 1)[1] for ref in refs for s in ref['sentences']])
+
+        # TODO I'm having issues with too little GPU memory, so a temporary fix...
+        # Randomly choose a sentence
+        sents = sents[randint(0, len(sents)-1)]
 
         return img, hha, sents, target, img_idx
 

@@ -14,35 +14,47 @@ class DatasetCatalog(object):
             "vocab_file": "vocab_file.txt",
             "has_depth": True
         },
-        "refcocog_google":{
+        "sunspotnodepth": {
+            "img_dir": "sunspot/images",
+            "ann_file": "sunspot/annotations/instances.json",
+            "refer_file": "sunspot/annotations/refs(boulder).p",
+            "vocab_file": "vocab_file.txt",
+            "has_depth": False
+        },
+        "refcocoggoogle":{
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcocog/instances.json",
             "refer_file": "coco/refcocog/refs(google).p",
-            "vocab_file": "vocab_file.txt"
+            "vocab_file": "vocab_file.txt",
+            "has_depth": False
         },
-        "refcocog_umc": {
+        "refcocogumc": {
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcocog/instances.json",
             "refer_file": "coco/refcocog/refs(umd).p",
-            "vocab_file": "vocab_file.txt"
+            "vocab_file": "vocab_file.txt",
+            "has_depth": False
         },
         "refcoco+": {
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcoco+/instances.json",
             "refer_file": "coco/refcoco+/refs(unc).p",
-            "vocab_file": "vocab_file.txt"
+            "vocab_file": "vocab_file.txt",
+            "has_depth": False
         },
-        "refcoco_google": {
+        "refcocogoogle": {
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcoco/instances.json",
             "refer_file": "coco/refcoco/refs(google).p",
-            "vocab_file": "vocab_file.txt"
+            "vocab_file": "vocab_file.txt",
+            "has_depth": False
         },
-        "refcoco_unc": {
+        "refcocounc": {
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcoco/instances.json",
             "refer_file": "coco/refcoco/refs(unc).p",
-            "vocab_file": "vocab_file.txt"
+            "vocab_file": "vocab_file.txt",
+            "has_depth": False
         },
         "sunrgbd_train": {
             "img_dir": "SUNRGBD/images",

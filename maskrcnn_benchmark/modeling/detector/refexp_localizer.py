@@ -38,19 +38,27 @@ class DepthRCNN(nn.Module):
         super(DepthRCNN, self).__init__()
 
         self.image_backbone = build_backbone(cfg)
-        self.hha_backbone = build_backbone(cfg)
-        self.rpn = build_rpn(cfg, self.image_backbone.out_channels*2)
+        if cfg.MODEL.BACKBONE.DEPTH:
+            self.hha_backbone = build_backbone(cfg)
+            self.rpn = build_rpn(cfg, self.image_backbone.out_channels * 2)
+        else:
+            self.hha_backbone = None
+            self.rpn = build_rpn(cfg, self.image_backbone.out_channels)
 
         self.roi_heads = None #build_roi_heads(cfg, self.image_backbone.out_channels*2)
 
     def features_forward(self, image_list, HHA_list):
         RGB_features = self.image_backbone(image_list.tensors)
-        HHA_features = self.hha_backbone(HHA_list.tensors)
 
-        image_features = []
-        for i in range(len(RGB_features)):  # Number of anchor boxes?
-            # Dimensions are (batch, feature, height, width)
-            image_features.append(torch.cat((RGB_features[i], HHA_features[i]), 1))
+        if self.hha_backbone:
+            HHA_features = self.hha_backbone(HHA_list.tensors)
+
+            image_features = []
+            for i in range(len(RGB_features)):  # Number of anchor boxes?
+                # Dimensions are (batch, feature, height, width)
+                image_features.append(torch.cat((RGB_features[i], HHA_features[i]), 1))
+        else:
+            image_features = RGB_features
 
         return image_features
 
@@ -74,12 +82,19 @@ class DepthRCNN(nn.Module):
         images, HHAs = instance
 
         images = images.to(device)
-        HHAs = HHAs.to(device)
+        image_list = to_image_list(images)
+
+
+        if self.hha_backbone:
+            HHAs = HHAs.to(device)
+            HHA_list = to_image_list(HHAs)
+        else:
+            HHA_list = None
 
         if targets is not None:
             targets = [target.to(device) for target in targets]
 
-        return images, HHAs, targets
+        return image_list, HHA_list, targets
 
 
     def forward(self, instance, device, targets=None):
@@ -95,13 +110,10 @@ class DepthRCNN(nn.Module):
                 like `scores`, `labels` and `mask` (for Mask R-CNN models).
 
         """
-        images, HHAs = self.instance_prep(instance, device, targets)
+        image_list, HHA_list = self.instance_prep(instance, device, targets)
 
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
-
-        image_list = to_image_list(images)
-        HHA_list = to_image_list(HHAs)
 
         image_features = self.features_forward(image_list, HHA_list)
 
@@ -111,83 +123,6 @@ class DepthRCNN(nn.Module):
             return losses
 
         return result
-
-
-    def do_train(
-        self,
-        data_loader,
-        optimizer,
-        scheduler,
-        checkpointer,
-        device,
-        checkpoint_period,
-        arguments,
-    ):
-        logger = logging.getLogger("maskrcnn_benchmark.trainer")
-        logger.info("Start training")
-        meters = MetricLogger(delimiter="  ")
-        max_iter = len(data_loader)
-        start_iter = arguments["iteration"]
-        self.train()
-        start_training_time = time.time()
-        end = time.time()
-        for iteration, instance in enumerate(data_loader, start_iter):
-            data_time = time.time() - end
-            iteration = iteration + 1
-            arguments["iteration"] = iteration
-
-            scheduler.step()
-
-            loss_dict = self(instance, device)
-
-            losses = sum(loss for loss in loss_dict.values())
-
-            # reduce losses over all GPUs for logging purposes
-            loss_dict_reduced = reduce_loss_dict(loss_dict)
-            losses_reduced = sum(loss for loss in loss_dict_reduced.values())
-            meters.update(loss=losses_reduced, **loss_dict_reduced)
-
-            optimizer.zero_grad()
-            losses.backward()
-            optimizer.step()
-
-            batch_time = time.time() - end
-            end = time.time()
-            meters.update(time=batch_time, data=data_time)
-
-            eta_seconds = meters.time.global_avg * (max_iter - iteration)
-            eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
-
-            if iteration % 20 == 0 or iteration == max_iter:
-                logger.info(
-                    meters.delimiter.join(
-                        [
-                            "eta: {eta}",
-                            "iter: {iter}",
-                            "{meters}",
-                            "lr: {lr:.6f}",
-                            "max mem: {memory:.0f}",
-                        ]
-                    ).format(
-                        eta=eta_string,
-                        iter=iteration,
-                        meters=str(meters),
-                        lr=optimizer.param_groups[0]["lr"],
-                        memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
-                    )
-                )
-            if iteration % checkpoint_period == 0:
-                checkpointer.save("model_{:07d}".format(iteration), **arguments)
-            if iteration == max_iter:
-                checkpointer.save("model_final", **arguments)
-
-        total_training_time = time.time() - start_training_time
-        total_time_str = str(datetime.timedelta(seconds=total_training_time))
-        logger.info(
-            "Total training time: {} ({:.4f} s / it)".format(
-                total_time_str, total_training_time / (max_iter)
-            )
-        )
 
 
 class ReferExpRCNN(DepthRCNN):
@@ -207,7 +142,11 @@ class ReferExpRCNN(DepthRCNN):
         self.wordnet = LanguageModel(vocab=cfg.MODEL.LSTM.VOCAB_N, hidden_dim=1024)
 
         # Ref Localization Network
-        self.ref_rpn = build_rpn(cfg, self.image_backbone.out_channels * 2 + 1024)
+        if self.hha_backbone:
+            self.ref_rpn = build_rpn(cfg, self.image_backbone.out_channels * 2 + 1024)
+        else:
+            self.ref_rpn = build_rpn(cfg, self.image_backbone.out_channels + 1024)
+
         self.ref_roi_heads = None  # build_roi_heads(cfg, self.image_backbone.out_channels*2)
 
     def instance_prep(self, instance, device, seg_targets):
@@ -258,11 +197,9 @@ class ReferExpRCNN(DepthRCNN):
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
 
-        images, HHAs, sentences, seg_targets, ref_targets = self.instance_prep(instance, device, targets)
+        image_list, HHA_list, sentences, seg_targets, ref_targets = self.instance_prep(instance, device, targets)
 
         # Calculate image features
-        image_list = to_image_list(images)
-        HHA_list = to_image_list(HHAs)
         image_features = self.features_forward(image_list, HHA_list)
 
         # Calculate text features
