@@ -36,7 +36,7 @@ class HHADataset(COCODataset):
 
     def loadHHA(self, img_id):
         dir = self.coco.loadImgs(img_id)[0]['file_name'].split('image')[0]
-        file = [file for file in os.listdir(osp.join(self.root, dir, 'HHA')) if file.endswith('png')][0]
+        file = [file for file in os.listdir(osp.join(self.root, dir, 'HHA')) if file.endswith('png')][-1]
         path = osp.join(self.root, dir, 'HHA', file)
 
         img = Image.open(path).convert('RGB')
