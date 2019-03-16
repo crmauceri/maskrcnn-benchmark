@@ -1,6 +1,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-from maskrcnn_benchmark.structures.image_list import to_image_list, ImageList
+from maskrcnn_benchmark.structures.image_list import to_image_list
 from maskrcnn_benchmark.structures.tensorlist import to_tensor_list
+from torch import Tensor
 
 
 class BatchCollator(object):
@@ -33,7 +34,7 @@ class HHACollator(object):
     def __call__(self, batch):
         transposed_batch = list(zip(*batch))
         images = to_image_list(transposed_batch[0], self.size_divisible)
-        if isinstance(transposed_batch[1][0], ImageList):
+        if isinstance(transposed_batch[1][0], Tensor):
             HHAs = to_image_list(transposed_batch[1], self.size_divisible)
         else:
             HHAs = transposed_batch[1]
@@ -55,7 +56,7 @@ class RefExpBatchCollator(object):
     def __call__(self, batch):
         transposed_batch = list(zip(*batch))
         images = to_image_list(transposed_batch[0], self.size_divisible)
-        if isinstance(transposed_batch[1][0], ImageList):
+        if isinstance(transposed_batch[1][0], Tensor):
             HHAs = to_image_list(transposed_batch[1], self.size_divisible)
         else:
             HHAs = transposed_batch[1]
