@@ -107,7 +107,9 @@ class ReferExpressionDataset(HHADataset):
 
         refs = self.coco.imgToRefs[img_idx]
 
-        sentence_t = [s['one_hot'] for ref in refs for s in ref['sentences']]
+        sentence_t = [s['vocab'] for ref in refs for s in ref['sentences']]
+        max_t = max([len(s) for s in sentence_t])
+        sentence_t = [[0]*(max_t-len(s)) + s for s in sentence_t]
         sentence_t = torch.as_tensor(sentence_t)
         sents = TensorList(sentence_t)
 
@@ -138,19 +140,19 @@ class ReferExpressionDataset(HHADataset):
             category_id = ref['category_id']
             image_id = ref['image_id']
 
-            # add mapping related to ref
-            Refs[ref_id] = ref
-            imgToRefs[image_id] = imgToRefs.get(image_id, []) + [ref]
-            catToRefs[category_id] = catToRefs.get(category_id, []) + [ref]
-            refToAnn[ref_id] = self.coco.anns[ann_id]
-            annToRef[ann_id] = ref
-
             # add mapping of sent
             for sent in ref['sentences']:
                 self.sent2vocab(sent)
                 Sents[sent['sent_id']] = sent
                 sentToRef[sent['sent_id']] = ref
                 sentToTokens[sent['sent_id']] = sent['tokens']
+
+            # add mapping related to ref
+            Refs[ref_id] = ref
+            imgToRefs[image_id] = imgToRefs.get(image_id, []) + [ref]
+            catToRefs[category_id] = catToRefs.get(category_id, []) + [ref]
+            refToAnn[ref_id] = self.coco.anns[ann_id]
+            annToRef[ann_id] = ref
 
         # create class members
         self.coco.refs = Refs
@@ -164,10 +166,6 @@ class ReferExpressionDataset(HHADataset):
 
         self.max_sent_len = max(
             [len(sent['tokens']) for sent in self.coco.sents.values()]) + 2  # For the begining and end tokens
-
-        for sent in self.coco.sents:
-            padding = [0.0] * (self.max_sent_len - len(self.coco.sents[sent]['vocab']))
-            self.coco.sents[sent]['one_hot'] = padding + self.coco.sents[sent]['vocab']
 
         self.train_index = list(set([self.coco.refs[ref]['image_id'] for ref in self.coco.refs if self.coco.refs[ref]['split'] == 'train']))
         self.train_index.sort()
