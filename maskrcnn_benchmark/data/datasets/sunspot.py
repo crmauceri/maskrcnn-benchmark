@@ -107,15 +107,11 @@ class ReferExpressionDataset(HHADataset):
 
         refs = self.coco.imgToRefs[img_idx]
 
-        # sents = []
-        # for ref in refs:
-        #     sentences = TensorList([s['one_hot'] for s in ref['sentences']])
-        #     sentences.add_field('ann_id', [s['one_hot'] for s in ref['sentences']]
-
         sentence_t = [s['one_hot'] for ref in refs for s in ref['sentences']]
         sentence_t = torch.as_tensor(sentence_t)
         sents = TensorList(sentence_t)
 
+        refs = [ref for ref in refs if ref['ann_id'] in target.get_field("ann_id")]
         sents.add_field('tokens', [s['tokens'] for ref in refs for s in ref['sentences']])
         sents.add_field('img_id', [s['sent_id'].split('_')[1] for ref in refs for s in ref['sentences']])
         sents.add_field('ann_id', [s['sent_id'].split('_', 1)[1] for ref in refs for s in ref['sentences']])
