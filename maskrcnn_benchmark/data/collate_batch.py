@@ -37,7 +37,7 @@ class HHACollator(object):
         targets = transposed_batch[2]
         img_ids = transposed_batch[3]
 
-        return images, HHAs, targets, img_ids
+        return (images, HHAs), targets, img_ids
 
 class RefExpBatchCollator(object):
     """
@@ -56,4 +56,4 @@ class RefExpBatchCollator(object):
         targets = transposed_batch[3]
         img_ids = transposed_batch[4]
         sentences = transposed_batch[2]
-        return images, HHAs, sentences, targets, img_ids
+        return (images, HHAs, sentences), targets, img_ids

@@ -60,10 +60,7 @@ def do_train(
 
         scheduler.step()
 
-        images = images.to(device)
-        targets = [target.to(device) for target in targets]
-
-        loss_dict = model(images, targets)
+        loss_dict = model(images, device, targets=targets)
 
         losses = sum(loss for loss in loss_dict.values())
 

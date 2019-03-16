@@ -17,6 +17,7 @@ from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 def main():
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")

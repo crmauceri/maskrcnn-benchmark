@@ -25,6 +25,7 @@ from maskrcnn_benchmark.utils.imports import import_file
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 def train(cfg, local_rank, distributed):
     model = build_detection_model(cfg)

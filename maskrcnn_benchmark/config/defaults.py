@@ -115,6 +115,16 @@ _C.MODEL.GROUP_NORM.NUM_GROUPS = 32
 # GroupNorm's small constant in the denominator
 _C.MODEL.GROUP_NORM.EPSILON = 1e-5
 
+# ---------------------------------------------------------------------------- #
+# LSTM options
+# ---------------------------------------------------------------------------- #
+_C.MODEL.LSTM = CN()
+# Number of words in vocabulary
+_C.MODEL.LSTM.VOCAB_N = -1
+# Number of hidden dimensions in LSTM
+_C.MODEL.LSTM.HIDDEN = 1024
+# Dropout likelyhood during training
+_C.MODEL.LSTM.DROPOUT = 0
 
 # ---------------------------------------------------------------------------- #
 # RPN options
