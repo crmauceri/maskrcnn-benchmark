@@ -417,9 +417,9 @@ _C.SOLVER.IMS_PER_BATCH = 4
 _C.LOSS_WEIGHTS = CN()
 _C.LOSS_WEIGHTS.loss_objectness = 1
 _C.LOSS_WEIGHTS.loss_rpn_box_reg = 1
-_C.LOSS_WEIGHTS.TEXT_LOSS = 0.01
-_C.LOSS_WEIGHTS.ref_objectness = 10
-_C.LOSS_WEIGHTS.ref_rpn_box_reg = 100
+_C.LOSS_WEIGHTS.TEXT_LOSS = 0.001
+_C.LOSS_WEIGHTS.ref_objectness = 1
+_C.LOSS_WEIGHTS.ref_rpn_box_reg = 10
 
 # ---------------------------------------------------------------------------- #
 # Specific test options
