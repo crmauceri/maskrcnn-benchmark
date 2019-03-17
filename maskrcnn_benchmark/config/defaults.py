@@ -126,6 +126,8 @@ _C.MODEL.LSTM.VOCAB_N = -1
 _C.MODEL.LSTM.HIDDEN = 1024
 # Dropout likelyhood during training
 _C.MODEL.LSTM.DROPOUT = 0
+# Dimension of additional features that are concatenated to the embedding
+_C.MODEL.LSTM.ADDITIONAL_FEATS = 0
 
 # ---------------------------------------------------------------------------- #
 # RPN options
@@ -405,12 +407,19 @@ _C.SOLVER.WARMUP_FACTOR = 1.0 / 3
 _C.SOLVER.WARMUP_ITERS = 500
 _C.SOLVER.WARMUP_METHOD = "linear"
 
-_C.SOLVER.CHECKPOINT_PERIOD = 2500
+_C.SOLVER.CHECKPOINT_PERIOD = 500
 
 # Number of images per batch
 # This is global, so if we have 8 GPUs and IMS_PER_BATCH = 16, each GPU will
 # see 2 images per batch
-_C.SOLVER.IMS_PER_BATCH = 16
+_C.SOLVER.IMS_PER_BATCH = 4
+
+_C.LOSS_WEIGHTS = CN()
+_C.LOSS_WEIGHTS.loss_objectness = 1
+_C.LOSS_WEIGHTS.loss_rpn_box_reg = 1
+_C.LOSS_WEIGHTS.TEXT_LOSS = 0.01
+_C.LOSS_WEIGHTS.ref_objectness = 10
+_C.LOSS_WEIGHTS.ref_rpn_box_reg = 100
 
 # ---------------------------------------------------------------------------- #
 # Specific test options
@@ -429,6 +438,6 @@ _C.TEST.DETECTIONS_PER_IMG = 100
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #
-_C.OUTPUT_DIR = "."
+_C.OUTPUT_DIR = "output/"
 
 _C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")

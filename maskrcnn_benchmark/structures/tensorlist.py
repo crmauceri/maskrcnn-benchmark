@@ -19,6 +19,7 @@ class TensorList(object):
         self.extra_fields = {}
 
     def add_field(self, field, field_data):
+        assert len(field_data) == len(self), "Length {} != {}".format(field_data, self.tensor.shape)
         self.extra_fields[field] = field_data
 
     def get_field(self, field):
@@ -47,16 +48,22 @@ class TensorList(object):
         return tensor
 
     def __getitem__(self, item):
+
         tensor = TensorList(self.tensor[item])
         if isinstance(item, int):
             tensor.tensor = tensor.tensor.unsqueeze(0)
+
         for k, v in self.extra_fields.items():
-            if isinstance(v, torch.Tensor):
-                tensor.add_field(k, v[item])
-            elif isinstance(item, int):
-                tensor.add_field(k, [v[item]])
-            else:
-                tensor.add_field(k, [v[ind] for ind, i in enumerate(item) if i == 1])
+            try:
+                if isinstance(v, torch.Tensor):
+                    tensor.add_field(k, v[item])
+                elif isinstance(item, int):
+                    tensor.add_field(k, [v[item]])
+                else:
+                    tensor.add_field(k, [v[ind] for ind, i in enumerate(item) if i == 1])
+            except IndexError as E:
+                print("Index Error for {}: {} at {}".format(k, v, item))
+                raise E
         return tensor
 
     def __len__(self):

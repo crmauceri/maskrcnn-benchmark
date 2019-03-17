@@ -13,19 +13,19 @@ from collections import defaultdict
 DEBUG = False
 
 class Classifier(nn.Module):
-    def __init__(self, disable_cuda=False):
+    def __init__(self, loss_weight = 1.0):
         super(Classifier, self).__init__()
         self.total_loss = []
         self.val_loss = []
         self.start_epoch = 0
-        self.loss_function = SequenceLoss(nn.CrossEntropyLoss())
-
-        if not disable_cuda and torch.cuda.is_available():
-            self.device = torch.device('cuda')
-            self.use_cuda = True
-        else:
-            self.device = torch.device('cpu')
-            self.use_cuda = False
+        self.loss_function = SequenceLoss(nn.CrossEntropyLoss(), loss_weight)
+        #
+        # if not disable_cuda and torch.cuda.is_available():
+        #     self.device = torch.device('cuda')
+        #     self.use_cuda = True
+        # else:
+        #     self.device = torch.device('cpu')
+        #     self.use_cuda = False
 
     def forward(self, instance, parameters):
         pass
@@ -158,14 +158,15 @@ class Classifier(nn.Module):
 
 
 class SequenceLoss(nn.Module):
-    def __init__(self, loss_function, disable_cuda=False):
+    def __init__(self, loss_function, loss_weight = 1.0):
         super(SequenceLoss, self).__init__()
         self.Loss = loss_function
-
-        if not disable_cuda and torch.cuda.is_available():
-            self.device = torch.device('cuda')
-        else:
-            self.device = torch.device('cpu')
+        self.loss_weight = loss_weight
+        #
+        # if not disable_cuda and torch.cuda.is_available():
+        #     self.device = torch.device('cuda')
+        # else:
+        #     self.device = torch.device('cpu')
 
     def forward(self, embeddings, targets, per_instance=False):
         if per_instance:
@@ -177,4 +178,5 @@ class SequenceLoss(nn.Module):
             for step in range(targets.size()[1]):
                 loss += self.Loss(embeddings[:, step, :], targets[:, step])
 
+        loss *= self.loss_weight
         return loss

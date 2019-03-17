@@ -36,6 +36,7 @@ class DepthRCNN(nn.Module):
 
     def __init__(self, cfg):
         super(DepthRCNN, self).__init__()
+        self.loss_weights = cfg.LOSS_WEIGHTS
 
         self.image_backbone = build_backbone(cfg)
         if cfg.MODEL.BACKBONE.DEPTH:
@@ -64,6 +65,8 @@ class DepthRCNN(nn.Module):
 
     def predictions_forward(self, image_list, features, targets):
         proposals, proposal_losses = self.rpn(image_list, features, targets)
+        proposal_losses['loss_objectness'] *= self.loss_weights.loss_objectness
+        proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.loss_rpn_box_reg
 
         if self.roi_heads:
             x, result, detector_losses = self.roi_heads(features, proposals, targets)
@@ -137,9 +140,10 @@ class ReferExpRCNN(DepthRCNN):
 
     def __init__(self, cfg):
         super(ReferExpRCNN, self).__init__(cfg)
+        self.loss_weights = cfg.LOSS_WEIGHTS
 
         # Text Embedding Network
-        self.wordnet = LanguageModel(vocab=cfg.MODEL.LSTM.VOCAB_N, hidden_dim=1024)
+        self.wordnet = LanguageModel(cfg)
 
         # Ref Localization Network
         if self.hha_backbone:
@@ -166,6 +170,8 @@ class ReferExpRCNN(DepthRCNN):
 
     def predictions_forward(self, image_list, features, targets):
         proposals, proposal_losses = self.ref_rpn(image_list, features, targets)
+        proposal_losses['loss_objectness'] *= self.loss_weights.ref_objectness
+        proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.ref_rpn_box_reg
 
         if self.ref_roi_heads:
             x, result, detector_losses = self.ref_roi_heads(features, proposals, targets)

@@ -11,24 +11,19 @@ from maskrcnn_benchmark.data.datasets.sunspot import ReferExpressionDataset
 #Network Definition
 class LanguageModel(Classifier):
 
-    def __init__(self, checkpt_file=None, vocab=None, hidden_dim=None, dropout=0, additional_feat=0):
-        super(LanguageModel, self).__init__()
+    def __init__(self, cfg):
+        super(LanguageModel, self).__init__(cfg.LOSS_WEIGHTS.TEXT_LOSS)
 
-        if checkpt_file is not None:
-            m = re.search('hidden(?P<hidden>\d+)_feats(?P<feats>\d+)_dropout(?P<dropout>\d+)', checkpt_file)
-            self.hidden_dim = int(m.group('hidden'))
-            self.feats_dim = int(m.group('feats'))
-            self.dropout_p = float(m.group('dropout'))
-        else:
-            self.hidden_dim = hidden_dim
-            self.dropout_p = dropout
-            self.embed_dim = hidden_dim
-            self.feats_dim = additional_feat
+        self.vocab_dim = cfg.MODEL.LSTM.VOCAB_N +1
+        self.hidden_dim = cfg.MODEL.LSTM.HIDDEN
+        self.dropout_p = cfg.MODEL.LSTM.DROPOUT
+        self.feats_dim = cfg.MODEL.LSTM.ADDITIONAL_FEATS
+
+        self.embed_dim = self.hidden_dim
 
         #Word Embeddings
         # self.word2idx = dict(zip(vocab, range(1, len(vocab)+1)))
         # self.ind2word = ['<>'] + vocab
-        self.vocab_dim = vocab+1
         self.embedding = torch.nn.Embedding(self.vocab_dim, self.embed_dim, padding_idx=0)
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states with dimensionality hidden_dim
@@ -38,14 +33,11 @@ class LanguageModel(Classifier):
         self.hidden2vocab = nn.Linear(self.hidden_dim, self.vocab_dim)
         self.hidden = self.init_hidden(1)
 
-        self.to(self.device)
-        if checkpt_file is not None:
-            super(LanguageModel, self).load_model(checkpt_file)
 
     def init_hidden(self, batch_size):
         # The axes semantics are (num_layers, minibatch_size, hidden_dim)
-        return (torch.zeros(1, batch_size, self.hidden_dim, device=self.device, requires_grad=True),
-                torch.zeros(1, batch_size, self.hidden_dim, device=self.device, requires_grad=True))
+        return (torch.zeros(1, batch_size, self.hidden_dim, device=next(self.parameters()).device, requires_grad=True),
+                torch.zeros(1, batch_size, self.hidden_dim, device=next(self.parameters()).device, requires_grad=True))
 
     @staticmethod
     def get_checkpt_file(checkpt_file, hidden_dim, feats_dim, dropout_p):
