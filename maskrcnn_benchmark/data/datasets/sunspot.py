@@ -104,6 +104,7 @@ class ReferExpressionDataset(HHADataset):
         img, hha, target, img_idx = super().getItem(idx)
 
         refs = self.coco.imgToRefs[img_idx]
+        refs = [ref for ref in refs if ref['ann_id'] in target.get_field("ann_id")]
 
         sentence_t = [s['vocab'] for ref in refs for s in ref['sentences']]
         max_t = max([len(s) for s in sentence_t])
@@ -111,7 +112,6 @@ class ReferExpressionDataset(HHADataset):
         sentence_t = torch.as_tensor(sentence_t)
         sents = TensorList(sentence_t)
 
-        refs = [ref for ref in refs if ref['ann_id'] in target.get_field("ann_id")]
         sents.add_field('tokens', [s['tokens'] for ref in refs for s in ref['sentences']])
         sents.add_field('img_id', [s['sent_id'].split('_')[1] for ref in refs for s in ref['sentences']])
         sents.add_field('ann_id', [s['sent_id'].split('_', 1)[1] for ref in refs for s in ref['sentences']])
