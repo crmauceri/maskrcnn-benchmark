@@ -67,10 +67,6 @@ class DepthRCNN(nn.Module):
     def predictions_forward(self, image_list, features, targets):
         proposals, proposal_losses = self.rpn(image_list, features, targets)
 
-        if self.training:
-            proposal_losses['loss_objectness'] *= self.loss_weights.loss_objectness
-            proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.loss_rpn_box_reg
-
         if self.roi_heads:
             x, result, detector_losses = self.roi_heads(features, proposals, targets)
         else:
@@ -79,8 +75,15 @@ class DepthRCNN(nn.Module):
             detector_losses = {}
 
         losses = {}
-        losses.update(detector_losses)
-        losses.update(proposal_losses)
+        if self.training:
+            losses.update(detector_losses)
+            losses.update(proposal_losses)
+            
+            proposal_losses['loss_objectness'] *= self.loss_weights.loss_objectness
+            proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.loss_rpn_box_reg
+            proposal_losses['loss_classifier'] *= self.loss_weights.loss_classifier
+            proposal_losses['loss_box_reg'] *= self.loss_weights.loss_box_reg
+            proposal_losses['loss_mask'] *= self.loss_weights.loss_mask
 
         return result, losses
 
@@ -177,10 +180,6 @@ class ReferExpRCNN(DepthRCNN):
     def predictions_forward(self, image_list, features, targets):
         proposals, proposal_losses = self.ref_rpn(image_list, features, targets)
 
-        if self.training:
-            proposal_losses['loss_objectness'] *= self.loss_weights.ref_objectness
-            proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.ref_rpn_box_reg
-
         if self.ref_roi_heads:
             x, result, detector_losses = self.ref_roi_heads(features, proposals, targets)
         else:
@@ -189,13 +188,20 @@ class ReferExpRCNN(DepthRCNN):
             detector_losses = {}
 
         losses = {}
-        losses.update(detector_losses)
-        losses.update(proposal_losses)
+        if self.training:
+            losses.update(detector_losses)
+            losses.update(proposal_losses)
 
-        # Change key names
-        keys = losses.keys()
-        key_dict = dict(zip(keys, ['refexp_'+k for k in keys]))
-        losses = {key_dict[key]: value for (key,value) in losses.items()}
+            # Change key names
+            keys = losses.keys()
+            key_dict = dict(zip(keys, ['refexp_' + k for k in keys]))
+            losses = {key_dict[key]: value for (key, value) in losses.items()}
+
+            losses['refexp_loss_objectness'] *= self.loss_weights.refexp_loss_objectness
+            losses['refexp_loss_rpn_box_reg'] *= self.loss_weights.refexp_loss_rpn_box_reg
+            losses['refexp_loss_classifier'] *= self.loss_weights.refexp_loss_classifier
+            losses['refexp_loss_box_reg'] *= self.loss_weights.refexp_loss_box_reg
+            losses['refexp_loss_mask'] *= self.loss_weights.refexp_loss_mask
 
         return result, losses
 
