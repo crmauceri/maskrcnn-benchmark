@@ -183,6 +183,7 @@ class ReferExpRCNN(DepthRCNN):
                 ref_targets.extend(s.get_field('ann_target'))
         else:
             ref_targets = None
+        ref_targets = [t.to(device) for t in ref_targets]
 
         return images, HHAs, sentences, seg_targets, ref_targets
 
