@@ -78,7 +78,7 @@ class DepthRCNN(nn.Module):
         if self.training:
             losses.update(detector_losses)
             losses.update(proposal_losses)
-            
+
             proposal_losses['loss_objectness'] *= self.loss_weights.loss_objectness
             proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.loss_rpn_box_reg
             proposal_losses['loss_classifier'] *= self.loss_weights.loss_classifier
