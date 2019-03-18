@@ -39,11 +39,11 @@ class DepthRCNN(nn.Module):
 
         # Weight losses
         self.weight_dict = {
-            'loss_objectness': cfg.LOSS_WEIGHTS.loss_weights.loss_objectness,
-            'loss_rpn_box_reg': cfg.LOSS_WEIGHTS.loss_weights.loss_rpn_box_reg,
-            'loss_classifier': cfg.LOSS_WEIGHTS.loss_weights.loss_classifier,
-            'loss_box_reg': cfg.LOSS_WEIGHTS.loss_weights.loss_box_reg,
-            'loss_mask': cfg.LOSS_WEIGHTS.loss_weights.loss_mask
+            'loss_objectness': cfg.LOSS_WEIGHTS.loss_objectness,
+            'loss_rpn_box_reg': cfg.LOSS_WEIGHTS.loss_rpn_box_reg,
+            'loss_classifier': cfg.LOSS_WEIGHTS.loss_classifier,
+            'loss_box_reg': cfg.LOSS_WEIGHTS.loss_box_reg,
+            'loss_mask': cfg.LOSS_WEIGHTS.loss_mask
         }
 
         self.image_backbone = build_backbone(cfg)
@@ -153,11 +153,11 @@ class ReferExpRCNN(DepthRCNN):
 
         # Weight losses
         self.weight_dict = {
-            'refexp_loss_objectness': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_objectness,
-            'refexp_loss_rpn_box_reg': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_rpn_box_reg,
-            'refexp_loss_classifier': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_classifier,
-            'refexp_loss_box_reg': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_box_reg,
-            'refexp_loss_mask': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_mask
+            'refexp_loss_objectness': cfg.LOSS_WEIGHTS.refexp_loss_objectness,
+            'refexp_loss_rpn_box_reg': cfg.LOSS_WEIGHTS.refexp_loss_rpn_box_reg,
+            'refexp_loss_classifier': cfg.LOSS_WEIGHTS.refexp_loss_classifier,
+            'refexp_loss_box_reg': cfg.LOSS_WEIGHTS.refexp_loss_box_reg,
+            'refexp_loss_mask': cfg.LOSS_WEIGHTS.refexp_loss_mask
         }
 
         # Text Embedding Network
