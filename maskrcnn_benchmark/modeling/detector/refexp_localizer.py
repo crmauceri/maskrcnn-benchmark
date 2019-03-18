@@ -36,7 +36,15 @@ class DepthRCNN(nn.Module):
 
     def __init__(self, cfg):
         super(DepthRCNN, self).__init__()
-        self.loss_weights = cfg.LOSS_WEIGHTS
+
+        # Weight losses
+        self.weight_dict = {
+            'loss_objectness': cfg.LOSS_WEIGHTS.loss_weights.loss_objectness,
+            'loss_rpn_box_reg': cfg.LOSS_WEIGHTS.loss_weights.loss_rpn_box_reg,
+            'loss_classifier': cfg.LOSS_WEIGHTS.loss_weights.loss_classifier,
+            'loss_box_reg': cfg.LOSS_WEIGHTS.loss_weights.loss_box_reg,
+            'loss_mask': cfg.LOSS_WEIGHTS.loss_weights.loss_mask
+        }
 
         self.image_backbone = build_backbone(cfg)
         if cfg.MODEL.BACKBONE.DEPTH:
@@ -79,11 +87,7 @@ class DepthRCNN(nn.Module):
             losses.update(detector_losses)
             losses.update(proposal_losses)
 
-            proposal_losses['loss_objectness'] *= self.loss_weights.loss_objectness
-            proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.loss_rpn_box_reg
-            proposal_losses['loss_classifier'] *= self.loss_weights.loss_classifier
-            proposal_losses['loss_box_reg'] *= self.loss_weights.loss_box_reg
-            proposal_losses['loss_mask'] *= self.loss_weights.loss_mask
+            losses = {key: value * self.weight_dict[key] for key, value in losses.items()}
 
         return result, losses
 
@@ -146,7 +150,15 @@ class ReferExpRCNN(DepthRCNN):
 
     def __init__(self, cfg):
         super(ReferExpRCNN, self).__init__(cfg)
-        self.loss_weights = cfg.LOSS_WEIGHTS
+
+        # Weight losses
+        self.weight_dict = {
+            'refexp_loss_objectness': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_objectness,
+            'refexp_loss_rpn_box_reg': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_rpn_box_reg,
+            'refexp_loss_classifier': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_classifier,
+            'refexp_loss_box_reg': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_box_reg,
+            'refexp_loss_mask': cfg.LOSS_WEIGHTS.loss_weights.refexp_loss_mask
+        }
 
         # Text Embedding Network
         self.wordnet = LanguageModel(cfg)
@@ -195,13 +207,8 @@ class ReferExpRCNN(DepthRCNN):
             # Change key names
             keys = losses.keys()
             key_dict = dict(zip(keys, ['refexp_' + k for k in keys]))
-            losses = {key_dict[key]: value for (key, value) in losses.items()}
 
-            losses['refexp_loss_objectness'] *= self.loss_weights.refexp_loss_objectness
-            losses['refexp_loss_rpn_box_reg'] *= self.loss_weights.refexp_loss_rpn_box_reg
-            losses['refexp_loss_classifier'] *= self.loss_weights.refexp_loss_classifier
-            losses['refexp_loss_box_reg'] *= self.loss_weights.refexp_loss_box_reg
-            losses['refexp_loss_mask'] *= self.loss_weights.refexp_loss_mask
+            losses = {key_dict[key]: value * self.weight_dict[key] for (key, value) in losses.items()}
 
         return result, losses
 
