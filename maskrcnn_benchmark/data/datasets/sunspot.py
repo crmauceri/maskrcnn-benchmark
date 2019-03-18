@@ -77,7 +77,7 @@ class ReferExpressionDataset(HHADataset):
 
     def length(self, split=None):
         if split is None:
-            return len(self.index)
+            return len(self.split_index)
         elif split == 'train':
             return len(self.train_index)
         elif split == 'test':
@@ -92,35 +92,25 @@ class ReferExpressionDataset(HHADataset):
 
     def getItem(self, idx, split=None):
 
-        if split is None:
-            self.ids = self.index #Set coco index
-        elif split == 'train':
-            self.ids = self.train_index
+        if split == 'train':
+            self.split_index = self.train_index
         elif split == 'test':
-            self.ids = self.test_index
+            self.split_index = self.test_index
         elif split == 'val':
-            self.ids = self.val_index
+            self.split_index = self.val_index
 
-        img, hha, target, img_idx = super().getItem(idx)
+        img_idx = int(self.split_index[idx].split('_')[1])
+        img, hha, target, img_idx = super().getItem(img_idx)
 
-        refs = self.coco.imgToRefs[img_idx]
-        refs = [ref for ref in refs if ref['ann_id'] in target.get_field("ann_id")]
+        # TODO Might be an issue with sentences without corresponding ann targets
+        sentence = self.coco.sents[self.split_index[idx]]
 
-        sentence_t = [s['vocab'] for ref in refs for s in ref['sentences']]
-        max_t = max([len(s) for s in sentence_t])
-        sentence_t = [[0]*(max_t-len(s)) + s for s in sentence_t]
-        sentence_t = torch.as_tensor(sentence_t)
-        sents = TensorList(sentence_t)
+        sents = TensorList([sentence['vocab']])
+        sents.add_field('tokens', [sentence['tokens']])
+        sents.add_field('img_id', [sentence['sent_id'].split('_')[1]])
+        sents.add_field('ann_id', [sentence['sent_id'].split('_', 1)[1]])
 
-        sents.add_field('tokens', [s['tokens'] for ref in refs for s in ref['sentences']])
-        sents.add_field('img_id', [s['sent_id'].split('_')[1] for ref in refs for s in ref['sentences']])
-        sents.add_field('ann_id', [s['sent_id'].split('_', 1)[1] for ref in refs for s in ref['sentences']])
-
-        # TODO I'm having issues with too little GPU memory, so a temporary fix...
-        # Randomly choose a sentence
-        sents = sents[randint(0, len(sents)-1)]
-
-        return img, hha, sents, target, img_idx
+        return img, hha, sents, target, self.split_index[idx]
 
     def createRefIndex(self, ref_file):
 
@@ -148,6 +138,7 @@ class ReferExpressionDataset(HHADataset):
                 Sents[sent['sent_id']] = sent
                 sentToRef[sent['sent_id']] = ref
                 sentToTokens[sent['sent_id']] = sent['tokens']
+                sent['split'] = ref['split']
 
             # add mapping related to ref
             Refs[ref_id] = ref
@@ -169,13 +160,16 @@ class ReferExpressionDataset(HHADataset):
         self.max_sent_len = max(
             [len(sent['tokens']) for sent in self.coco.sents.values()]) + 2  # For the begining and end tokens
 
-        self.train_index = list(set([self.coco.refs[ref]['image_id'] for ref in self.coco.refs if self.coco.refs[ref]['split'] == 'train']))
+        #This is the coco object, image id index
+        self.ids = dict(zip(self.coco.imgs.keys(), self.coco.imgs.keys()))
+
+        self.train_index = [sent_id for sent_id, sent in self.coco.sents.items() if sent['split'] == 'train']
         self.train_index.sort()
 
-        self.val_index = list(set([self.coco.refs[ref]['image_id'] for ref in self.coco.refs if self.coco.refs[ref]['split'] == 'val']))
+        self.val_index = [sent_id for sent_id, sent in self.coco.sents.items() if sent['split'] == 'val']
         self.val_index.sort()
 
-        self.test_index = list(set([self.coco.refs[ref]['image_id'] for ref in self.coco.refs if self.coco.refs[ref]['split'] == 'test']))
+        self.test_index = [sent_id for sent_id, sent in self.coco.sents.items() if sent['split'] == 'test']
         self.test_index.sort()
 
     def sent2vocab(self, sent):
@@ -190,3 +184,16 @@ class ReferExpressionDataset(HHADataset):
             else:
                 sent['vocab'].append(unk_index)
         sent['vocab'].append(end_index)
+
+    def get_img_info(self, index):
+
+        if self.active_split == 'train':
+            self.split_index = self.train_index
+        elif self.active_split == 'test':
+            self.split_index = self.test_index
+        elif self.active_split == 'val':
+            self.split_index = self.val_index
+
+        img_id = int(self.split_index[index].split('_')[1])
+        img_data = self.coco.imgs[img_id]
+        return img_data

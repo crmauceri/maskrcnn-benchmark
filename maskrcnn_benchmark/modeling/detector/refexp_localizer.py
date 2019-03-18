@@ -42,11 +42,12 @@ class DepthRCNN(nn.Module):
         if cfg.MODEL.BACKBONE.DEPTH:
             self.hha_backbone = build_backbone(cfg)
             self.rpn = build_rpn(cfg, self.image_backbone.out_channels * 2)
+            self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels * 2)
         else:
             self.hha_backbone = None
             self.rpn = build_rpn(cfg, self.image_backbone.out_channels)
+            self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels)
 
-        self.roi_heads = None #build_roi_heads(cfg, self.image_backbone.out_channels*2)
 
     def features_forward(self, image_list, HHA_list):
         RGB_features = self.image_backbone(image_list.tensors)
@@ -65,8 +66,10 @@ class DepthRCNN(nn.Module):
 
     def predictions_forward(self, image_list, features, targets):
         proposals, proposal_losses = self.rpn(image_list, features, targets)
-        proposal_losses['loss_objectness'] *= self.loss_weights.loss_objectness
-        proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.loss_rpn_box_reg
+
+        if self.training:
+            proposal_losses['loss_objectness'] *= self.loss_weights.loss_objectness
+            proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.loss_rpn_box_reg
 
         if self.roi_heads:
             x, result, detector_losses = self.roi_heads(features, proposals, targets)
@@ -148,10 +151,10 @@ class ReferExpRCNN(DepthRCNN):
         # Ref Localization Network
         if self.hha_backbone:
             self.ref_rpn = build_rpn(cfg, self.image_backbone.out_channels * 2 + 1024)
+            self.ref_roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels * 2 + 1024)
         else:
             self.ref_rpn = build_rpn(cfg, self.image_backbone.out_channels + 1024)
-
-        self.ref_roi_heads = None  # build_roi_heads(cfg, self.image_backbone.out_channels*2)
+            self.ref_roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels + 1024)
 
     def instance_prep(self, instance, device, seg_targets):
         images, HHAs, sentences = instance
@@ -159,19 +162,24 @@ class ReferExpRCNN(DepthRCNN):
 
         sentences = [s.to(device) for s in sentences]
         ref_targets = []
-        for ind, s in enumerate(sentences):
-            s.trim()
-            s_target = []
-            for ann in s.get_field('ann_id'):
-                s_target.append(seg_targets[ind].get_field('ann_id').index(ann))
-            ref_targets.extend(seg_targets[ind][torch.tensor(s_target)].to_list())
+        if seg_targets is not None:
+            for ind, s in enumerate(sentences):
+                s.trim()
+                s_target = []
+                for ann in s.get_field('ann_id'):
+                    s_target.append(seg_targets[ind].get_field('ann_id').index(ann))
+                ref_targets.extend(seg_targets[ind][torch.tensor(s_target)].to_list())
+        else:
+            ref_targets = None
 
         return images, HHAs, sentences, seg_targets, ref_targets
 
     def predictions_forward(self, image_list, features, targets):
         proposals, proposal_losses = self.ref_rpn(image_list, features, targets)
-        proposal_losses['loss_objectness'] *= self.loss_weights.ref_objectness
-        proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.ref_rpn_box_reg
+
+        if self.training:
+            proposal_losses['loss_objectness'] *= self.loss_weights.ref_objectness
+            proposal_losses['loss_rpn_box_reg'] *= self.loss_weights.ref_rpn_box_reg
 
         if self.ref_roi_heads:
             x, result, detector_losses = self.ref_roi_heads(features, proposals, targets)
@@ -183,6 +191,11 @@ class ReferExpRCNN(DepthRCNN):
         losses = {}
         losses.update(detector_losses)
         losses.update(proposal_losses)
+
+        # Change key names
+        keys = losses.keys()
+        key_dict = dict(zip(keys, ['refexp_'+k for k in keys]))
+        losses = {key_dict[key]: value for (key,value) in losses.items()}
 
         return result, losses
 
@@ -243,8 +256,7 @@ class ReferExpRCNN(DepthRCNN):
             losses['text_loss'] = text_loss
 
             # Referring Expression Localization
-            losses['ref_objectness'] = ref_exp_loss['loss_objectness']
-            losses['ref_rpn_box_reg'] = ref_exp_loss['loss_rpn_box_reg']
+            losses.update(ref_exp_loss)
             return losses
 
         return result

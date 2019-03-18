@@ -209,15 +209,26 @@ class BoxList(object):
     def __getitem__(self, item):
         bbox = BoxList(self.bbox[item], self.size, self.mode)
         for k, v in self.extra_fields.items():
-            if isinstance(item, torch.Tensor):
-                if isinstance(v, torch.Tensor) or isinstance(v, SegmentationMask):
-                    bbox.add_field(k, v[item])
+            if isinstance(v, SegmentationMask):
+                bbox.add_field(k, v[item])
+            elif isinstance(v, torch.Tensor):
+                if isinstance(item, int):
+                    # Trick so indexing a 1-d tensor returns a 1-d tensor instead of 0-d tensor
+                    bbox.add_field(k, v[item:item+1])
                 else:
-                    if item.dtype == torch.uint8:
-                        bbox.add_field(k, [v[ind] for ind, i in enumerate(item) if i==1])
-                    else:
-                        bbox.add_field(k, [v[i] for i in item])
+                    bbox.add_field(k, v[item])
+            elif isinstance(item, torch.Tensor):
+                if item.dtype == torch.uint8:
+                    # Logical Indexing
+                    bbox.add_field(k, [v[ind] for ind, i in enumerate(item) if i==1])
+                else:
+                    # Linear Indexing
+                    bbox.add_field(k, [v[i] for i in item])
+            elif isinstance(item, int):
+                # Want single index to return list with one element
+                bbox.add_field(k, [v[item]])
             else:
+                # Conventional python indexing
                 bbox.add_field(k, v[item])
         return bbox
 

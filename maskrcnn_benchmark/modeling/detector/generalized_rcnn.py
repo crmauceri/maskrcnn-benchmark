@@ -46,8 +46,10 @@ class GeneralizedRCNN(nn.Module):
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
 
+        if targets is not None:
+            targets = [target.to(device) for target in targets]
+
         images = images.to(device)
-        targets = [target.to(device) for target in targets]
 
         images = to_image_list(images)
         features = self.backbone(images.tensors)

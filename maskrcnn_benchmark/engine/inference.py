@@ -19,13 +19,14 @@ def compute_on_dataset(model, data_loader, device, timer=None):
     cpu_device = torch.device("cpu")
     for _, batch in enumerate(tqdm(data_loader)):
         images, targets, image_ids = batch
-        images = images.to(device)
+        # images = images.to(device)
         with torch.no_grad():
             if timer:
                 timer.tic()
-            output = model(images)
+            output = model(images, device=device)
             if timer:
-                torch.cuda.synchronize()
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
                 timer.toc()
             output = [o.to(cpu_device) for o in output]
         results_dict.update(
@@ -44,12 +45,12 @@ def _accumulate_predictions_from_multiple_gpus(predictions_per_gpu):
         predictions.update(p)
     # convert a dict where the key is the index in a list
     image_ids = list(sorted(predictions.keys()))
-    if len(image_ids) != image_ids[-1] + 1:
-        logger = logging.getLogger("maskrcnn_benchmark.inference")
-        logger.warning(
-            "Number of images that were gathered from multiple processes is not "
-            "a contiguous set. Some images might be missing from the evaluation"
-        )
+    # if len(image_ids) != image_ids[-1] + 1:
+    #     logger = logging.getLogger("maskrcnn_benchmark.inference")
+    #     logger.warning(
+    #         "Number of images that were gathered from multiple processes is not "
+    #         "a contiguous set. Some images might be missing from the evaluation"
+    #     )
 
     # convert to a list
     predictions = [predictions[i] for i in image_ids]
