@@ -180,10 +180,7 @@ class ReferExpRCNN(DepthRCNN):
         if seg_targets is not None:
             for ind, s in enumerate(sentences):
                 s.trim()
-                s_target = []
-                for ann in s.get_field('ann_id'):
-                    s_target.append(seg_targets[ind].get_field('ann_id').index(ann))
-                ref_targets.extend(seg_targets[ind][torch.tensor(s_target)].to_list())
+                ref_targets.extend(s.get_field('ann_target'))
         else:
             ref_targets = None
 

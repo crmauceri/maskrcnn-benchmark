@@ -16,11 +16,9 @@ class HHADataset(COCODataset):
     ):
         super().__init__(ann_file, img_root, remove_images_without_annotations, transforms)
 
-        # Fix the image ids assigned by the torchvision dataset loader
-        # self.index = dict(zip(range(len(self.coco.imgs.keys())), self.coco.imgs.keys()))
-
         # Set class variables
         self.has_depth = has_depth
+
 
     def __getitem__(self, idx):
         return self.getItem(idx)
@@ -55,6 +53,7 @@ class ReferExpressionDataset(HHADataset):
 
         # Set class variables
         self.active_split = active_split
+        self.exclude_list = ['32777128_7408_6']  # A few bad apples that have bad annotation mappings
 
         # Initialize vocabulary
         with open(vocab_file, 'r') as f:
@@ -65,50 +64,43 @@ class ReferExpressionDataset(HHADataset):
         # Index referring expressions
         self.createRefIndex(ref_file)
 
-        # if dataset == 'refcocog':
-        #     self.unique_test_objects = [ref['sent_ids'][0] for key, ref in self.refer.annToRef.items() if
-        #                                 ref['split'] == 'val']
-        # else:
-        #     self.unique_test_objects = [ref['sent_ids'][0] for key, ref in self.refer.annToRef.items() if
-        #                                 ref['split'] == 'test']
 
     def __len__(self):
-        return self.length(self.active_split)
-
-    def length(self, split=None):
-        if split is None:
-            return len(self.split_index)
-        elif split == 'train':
+        if self.active_split == 'train':
             return len(self.train_index)
-        elif split == 'test':
+        elif self.active_split == 'test':
             return len(self.test_index)
-        elif split == 'test_unique':
-            return len(self.unique_test_objects)
-        elif split == 'val':
+        elif self.active_split == 'val':
             return len(self.val_index)
+        else:
+            raise ValueError("No active split")
 
-    def __getitem__(self, item):
-        return self.getItem(item, self.active_split)
-
-    def getItem(self, idx, split=None):
-
-        if split == 'train':
+    def __getitem__(self, idx):
+        if self.active_split == 'train':
             self.split_index = self.train_index
-        elif split == 'test':
+        elif self.active_split == 'test':
             self.split_index = self.test_index
-        elif split == 'val':
+        elif self.active_split == 'val':
             self.split_index = self.val_index
+        else:
+            raise ValueError("No active split")
 
         img_idx = int(self.split_index[idx].split('_')[1])
         img, hha, target, img_idx = super().getItem(img_idx)
 
-        # TODO Might be an issue with sentences without corresponding ann targets
         sentence = self.coco.sents[self.split_index[idx]]
 
         sents = TensorList([sentence['vocab']])
         sents.add_field('tokens', [sentence['tokens']])
         sents.add_field('img_id', [sentence['sent_id'].split('_')[1]])
-        sents.add_field('ann_id', [sentence['sent_id'].split('_', 1)[1]])
+
+        ann_id = sentence['sent_id'].split('_', 1)[1]
+        sents.add_field('ann_id', [ann_id])
+
+        ann_target = [t for t in target if ann_id in t.get_field('ann_id')]
+        # Might be an issue with sentences without corresponding ann targets
+        assert len(ann_target) > 0
+        sents.add_field('ann_target', ann_target)
 
         return img, hha, sents, target, self.split_index[idx]
 
@@ -134,11 +126,12 @@ class ReferExpressionDataset(HHADataset):
 
             # add mapping of sent
             for sent in ref['sentences']:
-                self.sent2vocab(sent)
-                Sents[sent['sent_id']] = sent
-                sentToRef[sent['sent_id']] = ref
-                sentToTokens[sent['sent_id']] = sent['tokens']
-                sent['split'] = ref['split']
+                if sent['sent_id'] not in self.exclude_list:
+                    self.sent2vocab(sent)
+                    Sents[sent['sent_id']] = sent
+                    sentToRef[sent['sent_id']] = ref
+                    sentToTokens[sent['sent_id']] = sent['tokens']
+                    sent['split'] = ref['split']
 
             # add mapping related to ref
             Refs[ref_id] = ref
@@ -197,3 +190,23 @@ class ReferExpressionDataset(HHADataset):
         img_id = int(self.split_index[index].split('_')[1])
         img_data = self.coco.imgs[img_id]
         return img_data
+
+if __name__ == "__main__":
+
+    from tqdm import tqdm
+
+    # Run through whole dataset once
+    ann_file = '../../datasets/sunspot/annotations/instances.json'
+    img_root = '../../datasets/sunspot/images'
+    ref_file = '../../datasets/sunspot/annotations/refs(boulder).p'
+    vocab_file = '../../datasets/vocab_file.txt'
+    refer = ReferExpressionDataset(ann_file, img_root, ref_file, vocab_file, True, active_split="val")
+
+    for i in tqdm(range(len(refer))):
+        try:
+            img, hha, sents, target, idx = refer[i]
+        except ValueError as e:
+            print(e)
+            print(refer.split_index[i])
+        except AssertionError as e:
+            print(refer.split_index[i])
