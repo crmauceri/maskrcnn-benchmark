@@ -1,5 +1,5 @@
 import argparse
-import torch, cv2
+import torch, cv2, os
 import matplotlib.pyplot as plt
 from maskrcnn_benchmark import layers as L
 from maskrcnn_benchmark.utils import cv2_util
@@ -10,12 +10,18 @@ from maskrcnn_benchmark.utils.imports import import_file
 
 from maskrcnn_benchmark.data.build import build_dataset
 from maskrcnn_benchmark.data.transforms import build_transforms
+from torchvision.transforms import ToPILImage
+
+from maskrcnn_benchmark.utils.comm import synchronize, get_rank
+
+from test_net import test
 
 # Most of this code is from demos/predictor.py
 
 def main(prediction_file, cfg, show_mask_heatmaps=False):
 
     vis = Visualizer()
+    trans = ToPILImage()
 
     predictions_list = torch.load(prediction_file)
 
@@ -27,18 +33,20 @@ def main(prediction_file, cfg, show_mask_heatmaps=False):
 
     transforms = build_transforms(cfg, is_train=False)
     datasets, collate_fn = build_dataset(dataset_list, transforms, DatasetCatalog, is_train=False)
+    dataset = datasets[0]
 
-    for prediction_id, predictions in predictions_list.items():
+    for i in range(len(predictions_list)):
 
         #Get image and sentence
-        image, hha, sentence, targets, id = datasets[0][datasets[0].test_index.index(prediction_id)]
+        predictions = predictions_list[i]
+        image, hha, sentence, targets, id = dataset[i]
 
-        assert id == prediction_id
+        #image= trans(image).convert("RGB")
 
         prediction = vis.load_predictions(predictions, image)
         top_prediction = vis.select_top_predictions(prediction)
 
-        result = image.copy()
+        result = trans(image).convert("RGB")
         if show_mask_heatmaps:
             return vis.create_mask_montage(result, top_prediction)
         result = vis.overlay_boxes(result, top_prediction)
@@ -46,7 +54,7 @@ def main(prediction_file, cfg, show_mask_heatmaps=False):
             result = vis.overlay_mask(result, top_prediction)
 
         plt.imshow(result)
-        plt.title(" ".join(sentence.get_field('tokens')))
+        plt.title(" ".join(sentence.get_field('tokens')[0]))
         plt.show()
 
         print("Done")
@@ -215,15 +223,43 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")
     parser.add_argument(
         "--config-file",
-        default="configs/sunspot_experiments.yaml",
+        default="../configs/sunspot_experiments.yaml",
         metavar="FILE",
         help="path to config file",
     )
-    parser.add_argument("--prediction_file", default="output/sunspot_experiments/inference/sunspot_test/predictions.pth", metavar="FILE", help="path to prediction file")
+    parser.add_argument("--prediction_file",
+                        default="../output/sunspot_experiments_roi/inference/sunspot_test/predictions.pth", metavar="FILE",
+                        help="path to prediction file")
+
+    parser.add_argument("--local_rank", type=int, default=0)
+    parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
+
+    args = parser.parse_args()
+
+    num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
+    distributed = num_gpus > 1
+
+    if distributed:
+        torch.cuda.set_device(args.local_rank)
+        torch.distributed.init_process_group(
+            backend="nccl", init_method="env://"
+        )
+        synchronize()
+
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    cfg.freeze()
 
     args = parser.parse_args()
 
     cfg.merge_from_file(args.config_file)
     cfg.freeze()
+
+    test(cfg=cfg)
 
     main(args.prediction_file, cfg)

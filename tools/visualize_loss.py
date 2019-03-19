@@ -38,7 +38,7 @@ def parse_log(file):
     plt.title("Total Loss")
     plt.show()
 
-    parse_train.plot(x='iter', y=parse_train.columns[2:])
+    parse_train.plot(x='iter', y=parse_train.columns[2:-2])
     plt.show()
 
 

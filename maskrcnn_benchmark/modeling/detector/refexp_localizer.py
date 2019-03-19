@@ -176,14 +176,17 @@ class ReferExpRCNN(DepthRCNN):
         images, HHAs, seg_targets = super().instance_prep((images, HHAs), device, seg_targets)
 
         sentences = [s.to(device) for s in sentences]
+
         ref_targets = []
-        if seg_targets is not None:
-            for ind, s in enumerate(sentences):
-                s.trim()
-                ref_targets.extend(s.get_field('ann_target'))
-        else:
-            ref_targets = None
-        ref_targets = [t.to(device) for t in ref_targets]
+        if self.training:
+            if seg_targets is not None:
+                for ind, s in enumerate(sentences):
+                    s.trim()
+                    ref_targets.extend(s.get_field('ann_target'))
+            else:
+                ref_targets = None
+
+            ref_targets = [t.to(device) for t in ref_targets]
 
         return images, HHAs, sentences, seg_targets, ref_targets
 
