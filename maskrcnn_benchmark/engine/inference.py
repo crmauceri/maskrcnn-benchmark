@@ -17,20 +17,19 @@ def compute_on_dataset(model, data_loader, device, timer=None):
     model.eval()
     results_dict = {}
     cpu_device = torch.device("cpu")
-    for _, batch in enumerate(tqdm(data_loader)):
-        images, targets, image_ids = batch
-        # images = images.to(device)
+    for batch in tqdm(data_loader):
+        instance, target, img_id = batch
         with torch.no_grad():
             if timer:
                 timer.tic()
-            output = model(images, device=device)
+            output = model(instance, device=device)
             if timer:
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 timer.toc()
             output = [o.to(cpu_device) for o in output]
         results_dict.update(
-            {img_id: result for img_id, result in zip(image_ids, output)}
+            {img_id: result for img_id, result in zip(img_id, output)}
         )
     return results_dict
 
