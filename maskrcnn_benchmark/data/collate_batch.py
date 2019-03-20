@@ -32,6 +32,7 @@ class HHACollator(object):
         self.size_divisible = size_divisible
 
     def __call__(self, batch):
+        batch = [(b[0][0], b[0][1], b[1], b[2]) for b in batch]
         transposed_batch = list(zip(*batch))
         images = to_image_list(transposed_batch[0], self.size_divisible)
         if isinstance(transposed_batch[1][0], Tensor):
@@ -54,6 +55,7 @@ class RefExpBatchCollator(object):
         self.size_divisible = size_divisible
 
     def __call__(self, batch):
+        batch = [(b[0][0], b[0][1], b[0][2], b[1], b[2]) for b in batch]
         transposed_batch = list(zip(*batch))
         images = to_image_list(transposed_batch[0], self.size_divisible)
         if isinstance(transposed_batch[1][0], Tensor):

@@ -14,8 +14,6 @@ from torchvision.transforms import ToPILImage
 
 from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 
-from test_net import test
-
 # Most of this code is from demos/predictor.py
 
 def main(prediction_file, cfg, show_mask_heatmaps=False):
@@ -39,7 +37,7 @@ def main(prediction_file, cfg, show_mask_heatmaps=False):
 
         #Get image and sentence
         predictions = predictions_list[i]
-        image, hha, sentence, targets, id = dataset[i]
+        (image, hha, sentence), targets, id = dataset[i]
 
         #image= trans(image).convert("RGB")
 
@@ -223,43 +221,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")
     parser.add_argument(
         "--config-file",
-        default="../configs/sunspot_experiments.yaml",
+        default="configs/sunspot_experiments.yaml",
         metavar="FILE",
         help="path to config file",
     )
     parser.add_argument("--prediction_file",
-                        default="../output/sunspot_experiments_roi/inference/sunspot_test/predictions.pth", metavar="FILE",
+                        default="output/sunspot_experiments_roi_low_weight/inference/sunspot_test/predictions.pth", metavar="FILE",
                         help="path to prediction file")
-
-    parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument(
         "opts",
         help="Modify config options using the command-line",
         default=None,
         nargs=argparse.REMAINDER,
     )
-
     args = parser.parse_args()
-
-    num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
-    distributed = num_gpus > 1
-
-    if distributed:
-        torch.cuda.set_device(args.local_rank)
-        torch.distributed.init_process_group(
-            backend="nccl", init_method="env://"
-        )
-        synchronize()
 
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
-
-    args = parser.parse_args()
-
-    cfg.merge_from_file(args.config_file)
-    cfg.freeze()
-
-    test(cfg=cfg)
 
     main(args.prediction_file, cfg)

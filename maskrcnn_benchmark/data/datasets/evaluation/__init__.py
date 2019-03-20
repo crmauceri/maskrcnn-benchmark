@@ -1,5 +1,6 @@
 from maskrcnn_benchmark.data import datasets
 
+from .sunspot import sunrgbd_evaluation
 from .coco import coco_evaluation
 from .voc import voc_evaluation
 
@@ -18,7 +19,9 @@ def evaluate(dataset, predictions, output_folder, **kwargs):
     args = dict(
         dataset=dataset, predictions=predictions, output_folder=output_folder, **kwargs
     )
-    if isinstance(dataset, datasets.COCODataset):
+    if isinstance(dataset, datasets.ReferExpressionDataset):
+        return sunrgbd_evaluation(**args)
+    elif isinstance(dataset, datasets.COCODataset):
         return coco_evaluation(**args)
     elif isinstance(dataset, datasets.PascalVOCDataset):
         return voc_evaluation(**args)

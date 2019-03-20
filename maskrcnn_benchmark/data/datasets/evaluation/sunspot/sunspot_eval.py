@@ -1,16 +1,19 @@
-import logging
+import logging, time, copy
 import tempfile
 import os
 import torch
 from collections import OrderedDict
-from tqdm import tqdm
+import pycocotools.mask as maskutils
+import numpy as np
 
 from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
 
+from maskrcnn_benchmark.data.datasets.sunspot import ReferExpressionDataset
+from pycocotools.cocoeval import COCOeval
 
-def do_coco_evaluation(
+def do_sunrgbd_evaluation(
     dataset,
     predictions,
     box_only,
@@ -24,7 +27,7 @@ def do_coco_evaluation(
     if box_only:
         logger.info("Evaluating bbox proposals")
         areas = {"all": "", "small": "s", "medium": "m", "large": "l"}
-        res = COCOResults("box_proposal")
+        res = SUNRGBDResults("box_proposal")
         for limit in [100, 1000]:
             for area, suffix in areas.items():
                 stats = evaluate_box_proposals(
@@ -41,15 +44,12 @@ def do_coco_evaluation(
     coco_results = {}
     if "bbox" in iou_types:
         logger.info("Preparing bbox results")
-        coco_results["bbox"] = prepare_for_coco_detection(predictions, dataset)
+        coco_results["bbox"] = prepare_for_sunspot_detection(predictions, dataset)
     if "segm" in iou_types:
         logger.info("Preparing segm results")
-        coco_results["segm"] = prepare_for_coco_segmentation(predictions, dataset)
-    if 'keypoints' in iou_types:
-        logger.info('Preparing keypoints results')
-        coco_results['keypoints'] = prepare_for_coco_keypoint(predictions, dataset)
+        coco_results["segm"] = prepare_for_sunspot_segmentation(predictions, dataset)
 
-    results = COCOResults(*iou_types)
+    results = SUNRGBDResults(*iou_types)
     logger.info("Evaluating predictions")
     for iou_type in iou_types:
         with tempfile.NamedTemporaryFile() as f:
@@ -57,7 +57,7 @@ def do_coco_evaluation(
             if output_folder:
                 file_path = os.path.join(output_folder, iou_type + ".json")
             res = evaluate_predictions_on_coco(
-                dataset.coco, coco_results[iou_type], file_path, iou_type
+                dataset, coco_results[iou_type], file_path, iou_type
             )
             results.update(res)
     logger.info(results)
@@ -67,15 +67,16 @@ def do_coco_evaluation(
     return results, coco_results
 
 
-def prepare_for_coco_detection(predictions, dataset):
+def prepare_for_sunspot_detection(predictions, dataset):
     # assert isinstance(dataset, COCODataset)
-    coco_results = []
-    for image_id, prediction in enumerate(predictions):
-        original_id = dataset.id_to_img_map[image_id]
+    results = []
+    for id, prediction in enumerate(predictions):
+        original_id = dataset.split_index[id]
         if len(prediction) == 0:
             continue
 
-        img_info = dataset.get_img_info(image_id)
+        image_id = int(original_id.split('_')[1])
+        img_info = dataset.coco.imgs[image_id]
         image_width = img_info["width"]
         image_height = img_info["height"]
         prediction = prediction.resize((image_width, image_height))
@@ -87,10 +88,10 @@ def prepare_for_coco_detection(predictions, dataset):
 
         mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
 
-        coco_results.extend(
+        results.extend(
             [
                 {
-                    "image_id": original_id,
+                    "sent_id": original_id,
                     "category_id": mapped_labels[k],
                     "bbox": box,
                     "score": scores[k],
@@ -98,22 +99,20 @@ def prepare_for_coco_detection(predictions, dataset):
                 for k, box in enumerate(boxes)
             ]
         )
-    return coco_results
+    return results
 
 
-def prepare_for_coco_segmentation(predictions, dataset):
-    import pycocotools.mask as mask_util
-    import numpy as np
-
+def prepare_for_sunspot_segmentation(predictions, dataset):
     masker = Masker(threshold=0.5, padding=1)
     # assert isinstance(dataset, COCODataset)
-    coco_results = []
-    for image_id, prediction in tqdm(enumerate(predictions)):
-        original_id = dataset.id_to_img_map[image_id]
+    results = []
+    for id, prediction in enumerate(predictions):
+        original_id = dataset.split_index[id]
         if len(prediction) == 0:
             continue
 
-        img_info = dataset.get_img_info(image_id)
+        image_id = int(original_id.split("_")[1])
+        img_info = dataset.coco.imgs[image_id]
         image_width = img_info["width"]
         image_height = img_info["height"]
         prediction = prediction.resize((image_width, image_height))
@@ -133,7 +132,7 @@ def prepare_for_coco_segmentation(predictions, dataset):
         # rles = prediction.get_field('mask')
 
         rles = [
-            mask_util.encode(np.array(mask[0, :, :, np.newaxis], order="F"))[0]
+            maskutils.encode(np.array(mask[0, :, :, np.newaxis], order="F"))[0]
             for mask in masks
         ]
         for rle in rles:
@@ -141,10 +140,10 @@ def prepare_for_coco_segmentation(predictions, dataset):
 
         mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
 
-        coco_results.extend(
+        results.extend(
             [
                 {
-                    "image_id": original_id,
+                    "sent_id": original_id,
                     "category_id": mapped_labels[k],
                     "segmentation": rle,
                     "score": scores[k],
@@ -152,38 +151,8 @@ def prepare_for_coco_segmentation(predictions, dataset):
                 for k, rle in enumerate(rles)
             ]
         )
-    return coco_results
+    return results
 
-
-def prepare_for_coco_keypoint(predictions, dataset):
-    # assert isinstance(dataset, COCODataset)
-    coco_results = []
-    for image_id, prediction in enumerate(predictions):
-        original_id = dataset.id_to_img_map[image_id]
-        if len(prediction.bbox) == 0:
-            continue
-
-        # TODO replace with get_img_info?
-        image_width = dataset.coco.imgs[original_id]['width']
-        image_height = dataset.coco.imgs[original_id]['height']
-        prediction = prediction.resize((image_width, image_height))
-        prediction = prediction.convert('xywh')
-
-        boxes = prediction.bbox.tolist()
-        scores = prediction.get_field('scores').tolist()
-        labels = prediction.get_field('labels').tolist()
-        keypoints = prediction.get_field('keypoints')
-        keypoints = keypoints.resize((image_width, image_height))
-        keypoints = keypoints.keypoints.view(keypoints.keypoints.shape[0], -1).tolist()
-
-        mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
-
-        coco_results.extend([{
-            'image_id': original_id,
-            'category_id': mapped_labels[k],
-            'keypoints': keypoint,
-            'score': scores[k]} for k, keypoint in enumerate(keypoints)])
-    return coco_results
 
 # inspired from Detectron
 def evaluate_box_proposals(
@@ -220,21 +189,24 @@ def evaluate_box_proposals(
     gt_overlaps = []
     num_pos = 0
 
-    for image_id, prediction in enumerate(predictions):
-        original_id = dataset.id_to_img_map[image_id]
+    for id, prediction in enumerate(predictions):
+        original_id = dataset.split_index[id]
+        if len(prediction) == 0:
+            continue
 
-        img_info = dataset.get_img_info(image_id)
+        image_id = int(original_id.split("_")[1])
+        img_info = dataset.coco.imgs[image_id]
         image_width = img_info["width"]
         image_height = img_info["height"]
         prediction = prediction.resize((image_width, image_height))
 
         # sort predictions in descending order
         # TODO maybe remove this and make it explicit in the documentation
+        # TODO Test this portion!
         inds = prediction.get_field("objectness").sort(descending=True)[1]
         prediction = prediction[inds]
 
-        ann_ids = dataset.coco.getAnnIds(imgIds=original_id)
-        anno = dataset.coco.loadAnns(ann_ids)
+        anno = dataset.coco.loadAnns([original_id.split("_", 1)[1]])
         gt_boxes = [obj["bbox"] for obj in anno if obj["iscrowd"] == 0]
         gt_boxes = torch.as_tensor(gt_boxes).reshape(-1, 4)  # guard against no boxes
         gt_boxes = BoxList(gt_boxes, (image_width, image_height), mode="xywh").convert(
@@ -302,28 +274,65 @@ def evaluate_box_proposals(
     }
 
 
+# TODO this only compares the coco elements, not the sentences, might over compare annotation (bbox and segm)
 def evaluate_predictions_on_coco(
-    coco_gt, coco_results, json_result_file, iou_type="bbox"
+    refer_gt, coco_results, json_result_file, iou_type="bbox"
 ):
     import json
 
     with open(json_result_file, "w") as f:
         json.dump(coco_results, f)
 
-    from pycocotools.coco import COCO
-    from pycocotools.cocoeval import COCOeval
-
-    coco_dt = coco_gt.loadRes(str(json_result_file)) if coco_results else COCO()
-
-    # coco_dt = coco_gt.loadRes(coco_results)
-    coco_eval = COCOeval(coco_gt, coco_dt, iou_type)
+    refer_dt = loadRes(refer_gt, coco_results)
+    coco_eval = COCOeval(refer_gt.coco, refer_dt.coco, iou_type)
     coco_eval.evaluate()
     coco_eval.accumulate()
     coco_eval.summarize()
     return coco_eval
 
+def loadRes(refer, dt_anns):
+    """
+    Load result file and return a result api object.
+    :param   resFile (str)     : file name of result file
+    :return: res (obj)         : result api object
+    """
+    res = ReferExpressionDataset()
 
-class COCOResults(object):
+    tic = time.time()
+    print('Loading and preparing results...')
+    imgs = [int(ann['sent_id'].split('_')[1]) for ann in dt_anns]
+    res.coco.dataset['images'] = [img for img in refer.coco.dataset['images'] if img['id'] in imgs]
+
+    res.coco.dataset['categories'] = copy.deepcopy(refer.coco.dataset['categories'])
+
+    if 'bbox' in dt_anns[0] and not dt_anns[0]['bbox'] == []:
+        #for id in refer.split_index:
+        for id, ann in enumerate(dt_anns):
+            bb = ann['bbox']
+            x1, x2, y1, y2 = [bb[0], bb[0] + bb[2], bb[1], bb[1] + bb[3]]
+            if not 'segmentation' in ann:
+                ann['segmentation'] = [[x1, y1, x1, y2, x2, y2, x2, y1]]
+            ann['area'] = bb[2] * bb[3]
+            ann['image_id'] = ann['sent_id'].split('_')[1]
+            ann['id'] = ann['sent_id'].split('_', 1)[1]
+            ann['iscrowd'] = 0
+    elif 'segmentation' in dt_anns[0]:
+        for id, ann in enumerate(dt_anns):
+            # now only support compressed RLE format as segmentation results
+            ann['area'] = maskutils.area(ann['segmentation'])
+            if not 'bbox' in ann:
+                ann['bbox'] = maskutils.toBbox(ann['segmentation'])
+            ann['image_id'] = ann['sent_id'].split('_')[1]
+            ann['id'] = ann['sent_id'].split('_', 1)[1]
+            ann['iscrowd'] = 0
+    print('DONE (t={:0.2f}s)'.format(time.time()- tic))
+
+    res.coco.dataset['annotations'] = dt_anns
+    res.coco.createIndex()
+    return res
+
+
+class SUNRGBDResults(object):
     METRICS = {
         "bbox": ["AP", "AP50", "AP75", "APs", "APm", "APl"],
         "segm": ["AP", "AP50", "AP75", "APs", "APm", "APl"],
@@ -341,25 +350,24 @@ class COCOResults(object):
     }
 
     def __init__(self, *iou_types):
-        allowed_types = ("box_proposal", "bbox", "segm", "keypoints")
+        allowed_types = ("box_proposal", "bbox", "segm")
         assert all(iou_type in allowed_types for iou_type in iou_types)
         results = OrderedDict()
         for iou_type in iou_types:
             results[iou_type] = OrderedDict(
-                [(metric, -1) for metric in COCOResults.METRICS[iou_type]]
+                [(metric, -1) for metric in SUNRGBDResults.METRICS[iou_type]]
             )
         self.results = results
 
     def update(self, coco_eval):
         if coco_eval is None:
             return
-        from pycocotools.cocoeval import COCOeval
 
         assert isinstance(coco_eval, COCOeval)
         s = coco_eval.stats
         iou_type = coco_eval.params.iouType
         res = self.results[iou_type]
-        metrics = COCOResults.METRICS[iou_type]
+        metrics = SUNRGBDResults.METRICS[iou_type]
         for idx, metric in enumerate(metrics):
             res[metric] = s[idx]
 
@@ -388,3 +396,50 @@ def check_expected_results(results, expected_results, sigma_tol):
         else:
             msg = "PASS: " + msg
             logger.info(msg)
+
+
+if __name__=="__main__":
+    import argparse
+
+    from maskrcnn_benchmark.config import cfg
+    from maskrcnn_benchmark.data import make_data_loader
+
+    # Try to debug this independently
+    parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")
+    parser.add_argument(
+        "--config-file",
+        default="configs/sunspot_experiments.yaml",
+        metavar="FILE",
+        help="path to config file",
+    )
+    parser.add_argument("--prediction_file",
+                        default="output/sunspot_experiments_roi_low_weight/inference/sunspot_test/predictions.pth",
+                        metavar="FILE",
+                        help="path to prediction file")
+    parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
+    args = parser.parse_args()
+
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    cfg.freeze()
+
+    data_loader = make_data_loader(cfg, is_train=False, is_distributed=False)
+    dataset_name = cfg.DATASETS.TEST[0]
+
+    output_folder = os.path.join(cfg.OUTPUT_DIR, "inference", dataset_name)
+    predictions = torch.load(args.prediction_file)
+
+    do_sunrgbd_evaluation(
+            data_loader[0].dataset,
+            predictions,
+            box_only=True,
+            output_folder=output_folder,
+            iou_types=("bbox", "segm"),
+            expected_results=(),
+            expected_results_sigma_tol=4,
+    )

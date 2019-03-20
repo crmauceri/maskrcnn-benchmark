@@ -41,11 +41,19 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         self, ann_file, root, remove_images_without_annotations, transforms=None
     ):
         super(COCODataset, self).__init__(root, ann_file)
+
+        self.remove_images_without_annotations = remove_images_without_annotations
+        self.transforms = transforms
+
+        if ann_file is not None:
+            self.createCOCOIndex()
+
+    def createCOCOIndex(self):
         # sort indices for reproducible results
         self.ids = sorted(self.ids)
 
         # filter images without detection annotations
-        if remove_images_without_annotations:
+        if self.remove_images_without_annotations:
             ids = []
             for img_id in self.ids:
                 ann_ids = self.coco.getAnnIds(imgIds=img_id, iscrowd=None)
@@ -61,7 +69,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
             v: k for k, v in self.json_category_id_to_contiguous_id.items()
         }
         self.id_to_img_map = {k: v for k, v in enumerate(self.ids)}
-        self.transforms = transforms
+
 
     def __getitem__(self, idx):
         img, anno = super(COCODataset, self).__getitem__(idx)

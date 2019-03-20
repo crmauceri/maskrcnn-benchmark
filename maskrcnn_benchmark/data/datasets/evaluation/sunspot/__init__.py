@@ -1,7 +1,7 @@
-from .coco_eval import do_coco_evaluation
+from .sunspot_eval import do_sunrgbd_evaluation
 
 
-def coco_evaluation(
+def sunrgbd_evaluation(
     dataset,
     predictions,
     output_folder,
@@ -10,7 +10,7 @@ def coco_evaluation(
     expected_results,
     expected_results_sigma_tol,
 ):
-    return do_coco_evaluation(
+    return do_sunrgbd_evaluation(
         dataset=dataset,
         predictions=predictions,
         box_only=box_only,

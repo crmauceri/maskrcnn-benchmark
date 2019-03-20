@@ -30,7 +30,7 @@ class HHADataset(COCODataset):
         else:
             hha = None
 
-        return img, hha, target, image_idx
+        return (img, hha), target, image_idx
 
     def loadHHA(self, img_id):
         dir = self.coco.loadImgs(img_id)[0]['file_name'].split('image')[0]
@@ -46,7 +46,7 @@ class HHADataset(COCODataset):
 
 class ReferExpressionDataset(HHADataset):
     def __init__(
-        self, ann_file, img_root, ref_file, vocab_file, remove_images_without_annotations, \
+        self, ann_file=None, img_root=None, ref_file=None, vocab_file=None, remove_images_without_annotations=False, \
             transforms=None, active_split=None, has_depth=False,
     ):
         super().__init__(ann_file, img_root, remove_images_without_annotations, transforms, has_depth)
@@ -55,15 +55,24 @@ class ReferExpressionDataset(HHADataset):
         self.active_split = active_split
         self.exclude_list = ['32777128_7408_6']  # A few bad apples that have bad annotation mappings
 
+        if vocab_file is not None:
+            self.load_vocabulary(vocab_file)
+        else:
+            self.vocab =[]
+            self.word2idx = []
+
+        # Index referring expressions
+        if ref_file is not None:
+            self.createRefIndex(ref_file)
+        else:
+            self.split_index = []
+
+    def load_vocabulary(self, vocab_file):
         # Initialize vocabulary
         with open(vocab_file, 'r') as f:
             self.vocab = [v.strip() for v in f.readlines()]
         self.vocab.extend(['<bos>', '<eos>', '<unk>'])
         self.word2idx = dict(zip(self.vocab, range(1, len(self.vocab) + 1)))
-
-        # Index referring expressions
-        self.createRefIndex(ref_file)
-
 
     def __len__(self):
         if self.active_split == 'train':
@@ -86,7 +95,8 @@ class ReferExpressionDataset(HHADataset):
             raise ValueError("No active split")
 
         img_idx = int(self.split_index[idx].split('_')[1])
-        img, hha, target, img_idx = super().getItem(img_idx)
+        img_objs, target, img_idx = super().getItem(img_idx)
+        img, hha = img_objs
 
         sentence = self.coco.sents[self.split_index[idx]]
 
@@ -102,7 +112,7 @@ class ReferExpressionDataset(HHADataset):
         assert len(ann_target) > 0
         sents.add_field('ann_target', ann_target)
 
-        return img, hha, sents, target, self.split_index[idx]
+        return (img, hha, sents), target, self.split_index[idx]
 
     def createRefIndex(self, ref_file):
 
