@@ -38,18 +38,18 @@ MODEL:
   MASK_ON: True
 LOSS_WEIGHTS:
   USE_IMG_LOSS: True
-  loss_objectness: 1
-  loss_rpn_box_reg: 1
-  loss_classifier: 1
-  loss_box_reg: 1
-  loss_mask: 1
+  loss_objectness: 1.0
+  loss_rpn_box_reg: 1.0
+  loss_classifier: 1.0
+  loss_box_reg: 1.0
+  loss_mask: 1.0
   USE_TEXT_LOSS: True
   TEXT_LOSS: 0.001
-  refexp_loss_objectness: 10
-  refexp_loss_rpn_box_reg: 10
-  refexp_loss_classifier: 10
-  refexp_loss_box_reg: 100
-  refexp_loss_mask: 1
+  refexp_loss_objectness: 10.0
+  refexp_loss_rpn_box_reg: 10.0
+  refexp_loss_classifier: 10.0
+  refexp_loss_box_reg: 100.0
+  refexp_loss_mask: 1.0
 DATASETS:
   TRAIN: ("sunspot_train", "sunspot_val")
   TEST: ("sunspot_test",)
