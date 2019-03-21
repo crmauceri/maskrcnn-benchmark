@@ -4,7 +4,7 @@ MODEL:
   BACKBONE:
     CONV_BODY: "R-50-FPN"
     DEPTH: True
-    FREEZE_CONV_BODY_AT: 0
+    FREEZE_CONV_BODY_AT: 1  #Freezes the weights of the R-50, but not the RPN
   RESNETS:
     BACKBONE_OUT_CHANNELS: 256
   LSTM:
@@ -37,18 +37,13 @@ MODEL:
     SHARE_BOX_FEATURE_EXTRACTOR: False
   MASK_ON: True
 LOSS_WEIGHTS:
-  USE_IMG_LOSS: True
-  loss_objectness: 1
-  loss_rpn_box_reg: 1
-  loss_classifier: 1
-  loss_box_reg: 1
-  loss_mask: 1
+  USE_IMG_LOSS: False
   USE_TEXT_LOSS: True
   TEXT_LOSS: 0.001
-  refexp_loss_objectness: 10
-  refexp_loss_rpn_box_reg: 10
-  refexp_loss_classifier: 10
-  refexp_loss_box_reg: 100
+  refexp_loss_objectness: 1
+  refexp_loss_rpn_box_reg: 1
+  refexp_loss_classifier: 1
+  refexp_loss_box_reg: 10
   refexp_loss_mask: 1
 DATASETS:
   TRAIN: ("sunspot_train", "sunspot_val")

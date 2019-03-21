@@ -34,27 +34,32 @@ class DepthRCNN(nn.Module):
         detections / masks from it.
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, weight_dict=None, extra_features=0):
         super(DepthRCNN, self).__init__()
 
         # Weight losses
-        self.weight_dict = {
-            'loss_objectness': cfg.LOSS_WEIGHTS.loss_objectness,
-            'loss_rpn_box_reg': cfg.LOSS_WEIGHTS.loss_rpn_box_reg,
-            'loss_classifier': cfg.LOSS_WEIGHTS.loss_classifier,
-            'loss_box_reg': cfg.LOSS_WEIGHTS.loss_box_reg,
-            'loss_mask': cfg.LOSS_WEIGHTS.loss_mask
-        }
+        if weight_dict is None:
+            self.weight_dict = {
+                'loss_objectness': cfg.LOSS_WEIGHTS.loss_objectness,
+                'loss_rpn_box_reg': cfg.LOSS_WEIGHTS.loss_rpn_box_reg,
+                'loss_classifier': cfg.LOSS_WEIGHTS.loss_classifier,
+                'loss_box_reg': cfg.LOSS_WEIGHTS.loss_box_reg,
+                'loss_mask': cfg.LOSS_WEIGHTS.loss_mask
+            }
+        else:
+            self.weight_dict = weight_dict
 
         self.image_backbone = build_backbone(cfg)
+        self.freeze_backbone(self.image_backbone, cfg.MODEL.BACKBONE.FREEZE_CONV_BODY_AT)
         if cfg.MODEL.BACKBONE.DEPTH:
             self.hha_backbone = build_backbone(cfg)
-            self.rpn = build_rpn(cfg, self.image_backbone.out_channels * 2)
-            self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels * 2)
+            self.freeze_backbone(self.hha_backbone, cfg.MODEL.BACKBONE.FREEZE_CONV_BODY_AT)
+            self.rpn = build_rpn(cfg, self.image_backbone.out_channels * 2 + extra_features)
+            self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels * 2 + extra_features)
         else:
             self.hha_backbone = None
-            self.rpn = build_rpn(cfg, self.image_backbone.out_channels)
-            self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels)
+            self.rpn = build_rpn(cfg, self.image_backbone.out_channels + extra_features)
+            self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels + extra_features)
 
 
     def features_forward(self, image_list, HHA_list):
@@ -97,7 +102,6 @@ class DepthRCNN(nn.Module):
         images = images.to(device)
         image_list = to_image_list(images)
 
-
         if self.hha_backbone:
             HHAs = HHAs.to(device)
             HHA_list = to_image_list(HHAs)
@@ -108,6 +112,12 @@ class DepthRCNN(nn.Module):
             targets = [target.to(device) for target in targets]
 
         return image_list, HHA_list, targets
+
+    # From https://github.com/facebookresearch/maskrcnn-benchmark/pull/242/
+    def freeze_backbone(self, model, freeze_at):
+        for layer_index in range(freeze_at):
+            for p in model[layer_index].parameters():
+                p.requires_grad = False
 
 
     def forward(self, instance, device, targets=None):
@@ -138,7 +148,7 @@ class DepthRCNN(nn.Module):
         return result
 
 
-class ReferExpRCNN(DepthRCNN):
+class ReferExpRCNN(nn.Module):
     """
     Main class for Generalized R-CNN. Currently supports boxes and masks.
     It consists of three main parts:
@@ -149,10 +159,10 @@ class ReferExpRCNN(DepthRCNN):
     """
 
     def __init__(self, cfg):
-        super(ReferExpRCNN, self).__init__(cfg)
+        super(ReferExpRCNN, self).__init__()
 
         # Weight losses
-        self.weight_dict = {
+        self.img_weight_dict = {
             'loss_objectness': cfg.LOSS_WEIGHTS.loss_objectness,
             'loss_rpn_box_reg': cfg.LOSS_WEIGHTS.loss_rpn_box_reg,
             'loss_classifier': cfg.LOSS_WEIGHTS.loss_classifier,
@@ -160,20 +170,33 @@ class ReferExpRCNN(DepthRCNN):
             'loss_mask': cfg.LOSS_WEIGHTS.loss_mask
         }
 
+        self.ref_weight_dict = {
+            'loss_objectness': cfg.LOSS_WEIGHTS.refexp_loss_objectness,
+            'loss_rpn_box_reg': cfg.LOSS_WEIGHTS.refexp_loss_rpn_box_reg,
+            'loss_classifier': cfg.LOSS_WEIGHTS.refexp_loss_classifier,
+            'loss_box_reg': cfg.LOSS_WEIGHTS.refexp_loss_box_reg,
+            'loss_mask': cfg.LOSS_WEIGHTS.refexp_loss_mask
+        }
+
         # Text Embedding Network
         self.wordnet = LanguageModel(cfg)
+        self.use_text_loss = cfg.LOSS_WEIGHTS.USE_TEXT_LOSS
 
         # Ref Localization Network
-        if self.hha_backbone:
-            self.ref_rpn = build_rpn(cfg, self.image_backbone.out_channels * 2 + 1024)
-            self.ref_roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels * 2 + 1024)
+        self.refnet = DepthRCNN(cfg, weight_dict=self.ref_weight_dict, extra_features=self.wordnet.hidden_dim)
+
+        if cfg.LOSS_WEIGHTS.USE_IMG_LOSS:
+            # The backbone network of this model are redundant with self.refnet,
+            # so I'm gonna remove them so that we get errors if someone tries to use them
+            self.imagenet = DepthRCNN(cfg, weight_dict=self.img_weight_dict)
+            self.imagenet.image_backbone = None
+            self.imagenet.hha_backbone = None
         else:
-            self.ref_rpn = build_rpn(cfg, self.image_backbone.out_channels + 1024)
-            self.ref_roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels + 1024)
+            self.imagenet = None
 
     def instance_prep(self, instance, device, seg_targets):
         images, HHAs, sentences = instance
-        images, HHAs, seg_targets = super().instance_prep((images, HHAs), device, seg_targets)
+        images, HHAs, seg_targets = self.refnet.instance_prep((images, HHAs), device, seg_targets)
 
         sentences = [s.to(device) for s in sentences]
 
@@ -190,28 +213,6 @@ class ReferExpRCNN(DepthRCNN):
 
         return images, HHAs, sentences, seg_targets, ref_targets
 
-    def predictions_forward(self, image_list, features, targets):
-        proposals, proposal_losses = self.ref_rpn(image_list, features, targets)
-
-        if self.ref_roi_heads:
-            x, result, detector_losses = self.ref_roi_heads(features, proposals, targets)
-        else:
-            # RPN-only models don't have roi_heads
-            result = proposals
-            detector_losses = {}
-
-        losses = {}
-        if self.training:
-            losses.update(detector_losses)
-            losses.update(proposal_losses)
-
-            # Change key names
-            keys = losses.keys()
-            key_dict = dict(zip(keys, ['refexp_' + k for k in keys]))
-
-            losses = {key_dict[key]: value * self.weight_dict[key] for (key, value) in losses.items()}
-
-        return result, losses
 
     def forward(self, instance, device, targets=None):
         """
@@ -233,7 +234,7 @@ class ReferExpRCNN(DepthRCNN):
         image_list, HHA_list, sentences, seg_targets, ref_targets = self.instance_prep(instance, device, targets)
 
         # Calculate image features
-        image_features = self.features_forward(image_list, HHA_list)
+        image_features = self.refnet.features_forward(image_list, HHA_list)
 
         # Calculate text features
         sentence_batch = to_tensor_list(sentences)
@@ -260,17 +261,24 @@ class ReferExpRCNN(DepthRCNN):
             full_feature[i] = f
 
         ## Losses and predictions
-        result, ref_exp_loss = self.predictions_forward(image_sizes, full_feature, ref_targets)
+        result, losses = self.refnet.predictions_forward(image_sizes, full_feature, ref_targets)
+
+        # Change key names
+        keys = losses.keys()
+        key_dict = dict(zip(keys, ['refexp_' + k for k in keys]))
+
+        losses = {key_dict[key]: value * self.ref_weight_dict[key] for (key, value) in losses.items()}
 
         if self.training:
             # Normal instance segmentation
-            losses = super().predictions_forward(image_list, image_features, seg_targets)[1]
+            if self.imagenet:
+                img_loss = self.imagenet.predictions_forward(image_list, image_features, seg_targets)[1]
+                losses.update(img_loss)
 
             # Language model
-            losses['text_loss'] = text_loss
+            if self.use_text_loss:
+                losses['text_loss'] = text_loss
 
-            # Referring Expression Localization
-            losses.update(ref_exp_loss)
             return losses
 
         return result

@@ -415,11 +415,13 @@ _C.SOLVER.CHECKPOINT_PERIOD = 2000
 _C.SOLVER.IMS_PER_BATCH = 4
 
 _C.LOSS_WEIGHTS = CN()
+_C.LOSS_WEIGHTS.USE_IMG_LOSS = False
 _C.LOSS_WEIGHTS.loss_objectness = 1
 _C.LOSS_WEIGHTS.loss_rpn_box_reg = 1
 _C.LOSS_WEIGHTS.loss_classifier = 1
 _C.LOSS_WEIGHTS.loss_box_reg = 1
 _C.LOSS_WEIGHTS.loss_mask = 1
+_C.LOSS_WEIGHTS.USE_TEXT_LOSS = False
 _C.LOSS_WEIGHTS.TEXT_LOSS = 0.001
 _C.LOSS_WEIGHTS.refexp_loss_objectness = 10
 _C.LOSS_WEIGHTS.refexp_loss_rpn_box_reg = 10
