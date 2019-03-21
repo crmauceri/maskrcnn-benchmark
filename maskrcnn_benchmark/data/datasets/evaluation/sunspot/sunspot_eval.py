@@ -11,7 +11,7 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
 
 from maskrcnn_benchmark.data.datasets.sunspot import ReferExpressionDataset
-from pycocotools.cocoeval import COCOeval
+from maskrcnn_benchmark.data.datasets.evaluation.sunspot.cocoeval import COCOeval
 
 def do_sunrgbd_evaluation(
     dataset,
@@ -313,8 +313,9 @@ def loadRes(refer, dt_anns):
             if not 'segmentation' in ann:
                 ann['segmentation'] = [[x1, y1, x1, y2, x2, y2, x2, y1]]
             ann['area'] = bb[2] * bb[3]
-            ann['image_id'] = ann['sent_id'].split('_')[1]
-            ann['id'] = ann['sent_id'].split('_', 1)[1]
+            ann['image_id'] = int(ann['sent_id'].split('_')[1])
+            ann['ann_id'] = ann['sent_id'].split('_', 1)[1]
+            ann['id'] = ann['sent_id']
             ann['iscrowd'] = 0
     elif 'segmentation' in dt_anns[0]:
         for id, ann in enumerate(dt_anns):
@@ -322,8 +323,9 @@ def loadRes(refer, dt_anns):
             ann['area'] = maskutils.area(ann['segmentation'])
             if not 'bbox' in ann:
                 ann['bbox'] = maskutils.toBbox(ann['segmentation'])
-            ann['image_id'] = ann['sent_id'].split('_')[1]
-            ann['id'] = ann['sent_id'].split('_', 1)[1]
+            ann['image_id'] = int(ann['sent_id'].split('_')[1])
+            ann['ann_id'] = ann['sent_id'].split('_', 1)[1]
+            ann['id'] = ann['sent_id']
             ann['iscrowd'] = 0
     print('DONE (t={:0.2f}s)'.format(time.time()- tic))
 
@@ -413,7 +415,7 @@ if __name__=="__main__":
         help="path to config file",
     )
     parser.add_argument("--prediction_file",
-                        default="output/sunspot_experiments_roi_low_weight/inference/sunspot_test/predictions.pth",
+                        default="output/sunspot_limit_loss_no_depth_smaller_learning/inference/sunspot_test/predictions.pth",
                         metavar="FILE",
                         help="path to prediction file")
     parser.add_argument(
@@ -437,7 +439,7 @@ if __name__=="__main__":
     do_sunrgbd_evaluation(
             data_loader[0].dataset,
             predictions,
-            box_only=True,
+            box_only=False,
             output_folder=output_folder,
             iou_types=("bbox", "segm"),
             expected_results=(),
