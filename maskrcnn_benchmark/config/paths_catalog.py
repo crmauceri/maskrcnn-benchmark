@@ -21,6 +21,10 @@ class DatasetCatalog(object):
             "vocab_file": "vocab_file.txt",
             "has_depth": False
         },
+        "coco_sun":{
+            "img_dir": "sunspot/images",
+            "ann_file": "sunspot/annotations/instances.json",
+        },
         "refcocoggoogle":{
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcocog/instances.json",
@@ -184,7 +188,7 @@ class DatasetCatalog(object):
                 factory="ReferExpressionDataset",
                 args=args,
             )
-        elif "sunrgbd" in name:
+        elif "sunspot" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(
