@@ -44,7 +44,7 @@ LOSS_WEIGHTS:
   refexp_loss_rpn_box_reg: 1.0
   refexp_loss_classifier: 1.0
   refexp_loss_box_reg: 1.0
-  refexp_loss_mask: 0.1
+  refexp_loss_mask: 1.0
 DATASETS:
   TRAIN: ("sunspot_train", "sunspot_val")
   TEST: ("sunspot_test",)
