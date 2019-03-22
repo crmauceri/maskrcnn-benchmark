@@ -243,8 +243,8 @@ class COCOeval:
                     if m ==-1:
                         continue
                     dtIg[tind,dind] = gtIg[m]
-                    dtm[tind,dind]  = gt[m]['id']
-                    gtm[tind,m]     = d['id']
+                    dtm[tind,dind]  = p.sentIds.index(gt[m]['id'])
+                    gtm[tind,m]     = p.sentIds.index(d['id'])
         # set unmatched detections outside of area range to ignore
         a = np.array([d['area']<aRng[0] or d['area']>aRng[1] for d in dt]).reshape((1, len(dt)))
         dtIg = np.logical_or(dtIg, np.logical_and(dtm==0, np.repeat(a,T,0)))

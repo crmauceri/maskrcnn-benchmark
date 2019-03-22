@@ -427,7 +427,7 @@ _C.LOSS_WEIGHTS.refexp_loss_objectness = 10.0
 _C.LOSS_WEIGHTS.refexp_loss_rpn_box_reg = 10.0
 _C.LOSS_WEIGHTS.refexp_loss_classifier = 10.0
 _C.LOSS_WEIGHTS.refexp_loss_box_reg = 100.0
-_C.LOSS_WEIGHTS.refexp_loss_mask = 1.0
+_C.LOSS_WEIGHTS.refexp_loss_mask = 1.
 
 # ---------------------------------------------------------------------------- #
 # Specific test options
