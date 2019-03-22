@@ -1,5 +1,5 @@
 MODEL:
-  META_ARCHITECTURE: "RefExpRCNN"
+  META_ARCHITECTURE: "RefExpRCNN_Old"
   WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
   BACKBONE:
     CONV_BODY: "R-50-FPN"

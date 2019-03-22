@@ -39,7 +39,7 @@ MODEL:
 LOSS_WEIGHTS:
   USE_IMG_LOSS: False
   USE_TEXT_LOSS: True
-  TEXT_LOSS: 0.1
+  TEXT_LOSS: 0.01
   refexp_loss_objectness: 1.0
   refexp_loss_rpn_box_reg: 1.0
   refexp_loss_classifier: 1.0
