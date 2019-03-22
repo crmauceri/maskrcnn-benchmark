@@ -51,15 +51,18 @@ class DepthRCNN(nn.Module):
 
         self.image_backbone = build_backbone(cfg)
         self.freeze_backbone(self.image_backbone, cfg.MODEL.BACKBONE.FREEZE_CONV_BODY_AT)
+        self.roi_heads = None
         if cfg.MODEL.BACKBONE.DEPTH:
             self.hha_backbone = build_backbone(cfg)
             self.freeze_backbone(self.hha_backbone, cfg.MODEL.BACKBONE.FREEZE_CONV_BODY_AT)
             self.rpn = build_rpn(cfg, self.image_backbone.out_channels * 2 + extra_features)
-            self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels * 2 + extra_features)
+            if not cfg.MODEL.RPN_ONLY:
+                self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels * 2 + extra_features)
         else:
             self.hha_backbone = None
             self.rpn = build_rpn(cfg, self.image_backbone.out_channels + extra_features)
-            self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels + extra_features)
+            if not cfg.MODEL.RPN_ONLY:
+                self.roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels + extra_features)
 
 
     def features_forward(self, image_list, HHA_list):
