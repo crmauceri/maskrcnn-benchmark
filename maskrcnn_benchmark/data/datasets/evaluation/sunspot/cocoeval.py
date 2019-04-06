@@ -213,16 +213,16 @@ class COCOeval:
         # load computed ious
         ious = self.ious[annId][:, gtind] if len(self.ious[annId]) > 0 else self.ious[annId]
 
-        T = len(p.iouThrs)
-        G = len(gt)
-        D = len(dt)
+        T = len(p.iouThrs) # Number of IoU thresholds for evaluation
+        G = len(gt) # Number of gt annotations
+        D = len(dt) # Number of detections
         gtm  = np.zeros((T,G))
         dtm  = np.zeros((T,D))
         gtIg = np.array([g['_ignore'] for g in gt])
         dtIg = np.zeros((T,D))
         if not len(ious)==0:
-            for tind, t in enumerate(p.iouThrs):
-                for dind, d in enumerate(dt):
+            for tind, t in enumerate(p.iouThrs): # For each threshold
+                for dind, d in enumerate(dt): # For each detection
                     # information about best match so far (m=-1 -> unmatched)
                     iou = min([t,1-1e-10])
                     m   = -1

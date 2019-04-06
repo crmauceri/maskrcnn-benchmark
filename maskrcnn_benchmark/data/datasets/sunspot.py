@@ -112,6 +112,12 @@ class ReferExpressionDataset(HHADataset):
         assert len(ann_target) > 0
         sents.add_field('ann_target', ann_target)
 
+        bbox_list = target[
+            torch.tensor([t in sents.get_field('ann_id') for t in target.get_field('ann_id')], dtype=torch.uint8)]
+        bbox_list.add_field('scores', torch.ones(bbox_list.bbox.shape))
+        segmask = torch.cat([m.mask.unsqueeze(0).unsqueeze(0) for m in bbox_list.get_field('masks').masks], dim=0)
+        assert (segmask.shape[-2:] == torch.Size((img.size[1], img.size[0])))
+
         return (img, hha, sents), target, self.split_index[idx]
 
     def createRefIndex(self, ref_file):
