@@ -12,7 +12,8 @@ class DatasetCatalog(object):
             "ann_file": "sunspot/annotations/instances.json",
             "refer_file": "sunspot/annotations/refs(boulder).p",
             "vocab_file": "vocab_file.txt",
-            "has_depth": True
+            "has_depth": True,
+            "exclude_list": ['32777128_7408_6']  # A few bad apples that have bad annotation mappings
         },
         "sunspotnodepth": {
             "img_dir": "sunspot/images",
@@ -21,44 +22,45 @@ class DatasetCatalog(object):
             "vocab_file": "vocab_file.txt",
             "has_depth": False
         },
-        "coco_sun":{
-            "img_dir": "sunspot/images",
-            "ann_file": "sunspot/annotations/instances.json",
-        },
         "refcocoggoogle":{
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcocog/instances.json",
             "refer_file": "coco/refcocog/refs(google).p",
             "vocab_file": "vocab_file.txt",
-            "has_depth": False
+            "has_depth": True,
+            "depth_root": "coco/train2014/megadepth/"
         },
         "refcocogumc": {
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcocog/instances.json",
             "refer_file": "coco/refcocog/refs(umd).p",
             "vocab_file": "vocab_file.txt",
-            "has_depth": False
+            "has_depth": True,
+            "depth_root": "coco/train2014/megadepth/"
         },
         "refcoco+": {
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcoco+/instances.json",
             "refer_file": "coco/refcoco+/refs(unc).p",
-            "vocab_file": "vocab_file.txt",
-            "has_depth": False
+            "vocab_file": "True.txt",
+            "has_depth": True,
+            "depth_root": "coco/train2014/megadepth/"
         },
         "refcocogoogle": {
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcoco/instances.json",
             "refer_file": "coco/refcoco/refs(google).p",
             "vocab_file": "vocab_file.txt",
-            "has_depth": False
+            "has_depth": True,
+            "depth_root": "coco/train2014/megadepth/"
         },
         "refcocounc": {
             "img_dir": "coco/train2014",
             "ann_file": "coco/refcoco/instances.json",
             "refer_file": "coco/refcoco/refs(unc).p",
             "vocab_file": "vocab_file.txt",
-            "has_depth": False
+            "has_depth": True,
+            "depth_root": "coco/train2014/megadepth/"
         },
         "sunrgbd_train": {
             "img_dir": "SUNRGBD/images",
@@ -182,22 +184,12 @@ class DatasetCatalog(object):
                 ref_file=os.path.join(data_dir, attrs["refer_file"]),
                 vocab_file=os.path.join(data_dir, attrs["vocab_file"]),
                 has_depth=attrs["has_depth"],
-                active_split=name.split('_')[1]
+                depth_root=os.path.join(data_dir, attrs["depth_root"]) if "depth_root" in attrs else None,
+                active_split=name.split('_')[1],
+                exclude_list=attrs["exclude_list"] if "exclude_list" in attrs else []
             )
             return dict(
                 factory="ReferExpressionDataset",
-                args=args,
-            )
-        elif "sunspot" in name:
-            data_dir = DatasetCatalog.DATA_DIR
-            attrs = DatasetCatalog.DATASETS[name]
-            args = dict(
-                img_root=os.path.join(data_dir, attrs["img_dir"]),
-                ann_file=os.path.join(data_dir, attrs["ann_file"]),
-                has_depth=True,
-            )
-            return dict(
-                factory="HHADataset",
                 args=args,
             )
         elif "coco" in name:

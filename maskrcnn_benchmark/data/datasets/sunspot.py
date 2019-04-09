@@ -8,16 +8,18 @@ from random import randint
 
 from maskrcnn_benchmark.data.datasets.coco import COCODataset
 from maskrcnn_benchmark.structures.tensorlist import TensorList
+from torchvision.transforms import functional as F
 
 
 class HHADataset(COCODataset):
     def __init__(
-        self, ann_file, img_root, remove_images_without_annotations, transforms=None, has_depth=True,
+        self, ann_file, img_root, remove_images_without_annotations, transforms=None, has_depth=True, depth_root=None,
     ):
         super().__init__(ann_file, img_root, remove_images_without_annotations, transforms)
 
         # Set class variables
         self.has_depth = has_depth
+        self.depth_root = depth_root
 
 
     def __getitem__(self, idx):
@@ -33,11 +35,17 @@ class HHADataset(COCODataset):
         return (img, hha), target, image_idx
 
     def loadHHA(self, img_id):
-        dir = self.coco.loadImgs(img_id)[0]['file_name'].split('image')[0]
-        file = [file for file in os.listdir(osp.join(self.root, dir, 'HHA')) if file.endswith('png')][-1]
-        path = osp.join(self.root, dir, 'HHA', file)
+        img_data = self.coco.imgs[img_id]
+
+        if self.depth_root:
+            path = osp.join(self.depth_root, self.coco.loadImgs(img_id)[0]['file_name']).replace('jpg', 'png')
+        else:
+            dir = self.coco.loadImgs(img_id)[0]['file_name'].split('image')[0]
+            file = [file for file in os.listdir(osp.join(self.root, dir, 'HHA')) if file.endswith('png')][-1]
+            path = osp.join(self.root, dir, 'HHA', file)
 
         img = Image.open(path).convert('RGB')
+        img = F.resize(img, (img_data['height'], img_data['width']))
         if self.transforms is not None:
             img = self.transforms(img, None)[0]
 
@@ -47,13 +55,13 @@ class HHADataset(COCODataset):
 class ReferExpressionDataset(HHADataset):
     def __init__(
         self, ann_file=None, img_root=None, ref_file=None, vocab_file=None, remove_images_without_annotations=False, \
-            transforms=None, active_split=None, has_depth=False,
+            transforms=None, active_split=None, has_depth=False, exclude_list=[], depth_root=None,
     ):
-        super().__init__(ann_file, img_root, remove_images_without_annotations, transforms, has_depth)
+        super().__init__(ann_file, img_root, remove_images_without_annotations, transforms, has_depth, depth_root)
 
         # Set class variables
         self.active_split = active_split
-        self.exclude_list = ['32777128_7408_6']  # A few bad apples that have bad annotation mappings
+        self.exclude_list = exclude_list
 
         if vocab_file is not None:
             self.load_vocabulary(vocab_file)
@@ -94,17 +102,18 @@ class ReferExpressionDataset(HHADataset):
         else:
             raise ValueError("No active split")
 
-        img_idx = int(self.split_index[idx].split('_')[1])
+        sent_idx = self.split_index[idx]
+        img_idx = int(self.coco.sentToRef[sent_idx]['image_id'])
         img_objs, target, img_idx = super().getItem(img_idx)
         img, hha = img_objs
 
-        sentence = self.coco.sents[self.split_index[idx]]
+        sentence = self.coco.sents[sent_idx]
 
         sents = TensorList([sentence['vocab']])
         sents.add_field('tokens', [sentence['tokens']])
-        sents.add_field('img_id', [sentence['sent_id'].split('_')[1]])
+        sents.add_field('img_id', [img_idx])
 
-        ann_id = sentence['sent_id'].split('_', 1)[1]
+        ann_id  = int(self.coco.sentToRef[sent_idx]['ann_id'])
         sents.add_field('ann_id', [ann_id])
 
         ann_target = [t for t in target if ann_id in t.get_field('ann_id')]
@@ -115,8 +124,6 @@ class ReferExpressionDataset(HHADataset):
         bbox_list = target[
             torch.tensor([t in sents.get_field('ann_id') for t in target.get_field('ann_id')], dtype=torch.uint8)]
         bbox_list.add_field('scores', torch.ones(bbox_list.bbox.shape))
-        segmask = torch.cat([m.mask.unsqueeze(0).unsqueeze(0) for m in bbox_list.get_field('masks').masks], dim=0)
-        assert (segmask.shape[-2:] == torch.Size((img.size[1], img.size[0])))
 
         return (img, hha, sents), target, self.split_index[idx]
 
@@ -203,8 +210,11 @@ class ReferExpressionDataset(HHADataset):
         elif self.active_split == 'val':
             self.split_index = self.val_index
 
-        img_id = int(self.split_index[index].split('_')[1])
-        img_data = self.coco.imgs[img_id]
+        try:
+            img_id = int(self.coco.sentToRef[self.split_index[index]]['image_id'])
+            img_data = self.coco.imgs[img_id]
+        except KeyError as e:
+            raise(e)
         return img_data
 
 if __name__ == "__main__":
