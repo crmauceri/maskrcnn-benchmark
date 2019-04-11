@@ -64,15 +64,15 @@ class DatasetCatalog(object):
         },
         "sunrgbd_train": {
             "img_dir": "SUNRGBD/images",
-            "ann_file": "SUNRGBD/annotations/instances_train.json"
+            "ann_file": "sunspot/annotations/instances.json"
         },
         "sunrgbd_val": {
             "img_dir": "SUNRGBD/images",
-            "ann_file": "SUNRGBD/annotations/instances_val.json"
+            "ann_file": "sunspot/annotations/instances.json"
         },
         "sunrgbd_test": {
             "img_dir": "SUNRGBD/images",
-            "ann_file": "SUNRGBD/annotations/instances_test.json"
+            "ann_file": "sunspot/annotations/instances.json"
         },
         "coco_2017_train": {
             "img_dir": "coco/train2017",
