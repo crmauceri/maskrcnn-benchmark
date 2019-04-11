@@ -192,7 +192,7 @@ class DatasetCatalog(object):
                 factory="ReferExpressionDataset",
                 args=args,
             )
-        elif "coco" in name:
+        elif "coco" in name or "sunrgbd" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(
