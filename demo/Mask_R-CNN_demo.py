@@ -1,12 +1,3 @@
-## Jupyter notebook demo
-
-This folder contains a simple demo that illustrates how you can use `maskrcnn_benchmark` for inference.
-
-
-### With your preferred environment
-
-You can start it by running it from this folder, using one of the following commands:
-```python
 from maskrcnn_benchmark.config import cfg
 from predictor import SUNSpotDemo
 from cv2 import imread, imshow, waitKey, destroyAllWindows
@@ -25,9 +16,8 @@ sunspot_demo = SUNSpotDemo(
 )
 # load image and then run prediction
 image = imread("6817.jpg")
-refexp = "The flowers on the table"  # Referring expression 
+refexp = "The flowers on the table"  # Referring expression
 predictions = sunspot_demo.run_on_opencv_image(image)
 imshow("Detections", predictions)
 waitKey(0)
 destroyAllWindows()
-```
