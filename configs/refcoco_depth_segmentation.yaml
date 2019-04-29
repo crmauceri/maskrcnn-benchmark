@@ -33,6 +33,7 @@ MODEL:
     SHARE_BOX_FEATURE_EXTRACTOR: False
   MASK_ON: True
 DATASETS:
+  DATACLASS: "HHADataset"
   TRAIN: ("refcocogoogle_train", "refcocogoogle_val")
   TEST: ("refcocogoogle_test",)
 DATALOADER:

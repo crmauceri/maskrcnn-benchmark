@@ -47,6 +47,7 @@ LOSS_WEIGHTS:
   refexp_loss_box_reg: 1.0
   refexp_loss_mask: 1.0
 DATASETS:
+  DATACLASS: "ReferExpressionDataset"
   TRAIN: ("refcocoggoogle_train", "refcocoggoogle_val")
   TEST: ("refcocoggoogle_test",)
 DATALOADER:

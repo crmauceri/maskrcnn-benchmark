@@ -59,6 +59,8 @@ _C.INPUT.TO_BGR255 = True
 # Dataset
 # -----------------------------------------------------------------------------
 _C.DATASETS = CN()
+# The object class that should be used to load the dataset
+_C.DATASETS.DATACLASS = "ReferExpressionDataset"
 # List of the dataset names for training, as present in paths_catalog.py
 _C.DATASETS.TRAIN = ()
 # List of the dataset names for testing, as present in paths_catalog.py

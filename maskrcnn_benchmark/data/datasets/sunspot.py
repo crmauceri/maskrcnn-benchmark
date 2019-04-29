@@ -10,6 +10,8 @@ from maskrcnn_benchmark.data.datasets.coco import COCODataset
 from maskrcnn_benchmark.structures.tensorlist import TensorList
 from torchvision.transforms import functional as F
 
+from maskrcnn_benchmark.structures.image_list import to_image_list
+
 
 class HHADataset(COCODataset):
     def __init__(
@@ -216,6 +218,35 @@ class ReferExpressionDataset(HHADataset):
         except KeyError as e:
             raise(e)
         return img_data
+
+    @staticmethod
+    def instance_prep(self, instance, device, targets, use_HHA=True, training=True):
+        images, HHAs, sentences = instance
+
+        images = images.to(device)
+        image_list = to_image_list(images)
+
+        if use_HHA:
+            HHAs = HHAs.to(device)
+            HHA_list = to_image_list(HHAs)
+        else:
+            HHA_list = None
+
+        if targets is not None:
+            targets = [target.to(device) for target in targets]
+
+        ref_targets = []
+        if training:
+            if targets is not None:
+                for ind, s in enumerate(sentences):
+                    s.trim()
+                    ref_targets.extend(s.get_field('ann_target'))
+            else:
+                ref_targets = None
+
+            ref_targets = [t.to(device) for t in ref_targets]
+
+        return image_list, HHA_list, sentences, targets, ref_targets
 
 if __name__ == "__main__":
 

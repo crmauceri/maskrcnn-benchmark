@@ -14,7 +14,7 @@ from .collate_batch import BatchCollator, RefExpBatchCollator, HHACollator
 from .transforms import build_transforms
 
 
-def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True):
+def build_dataset(dataset_list, transforms, dataset_catalog, data_class, is_train=True):
     """
     Arguments:
         dataset_list (list[str]): Contains the names of the datasets, i.e.,
@@ -30,7 +30,7 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True):
         )
     datasets = []
     for dataset_name in dataset_list:
-        data = dataset_catalog.get(dataset_name)
+        data = dataset_catalog.get(dataset_name, data_class)
         factory = getattr(D, data["factory"])
         args = data["args"]
         # for COCODataset, we want to remove images without annotations
@@ -158,7 +158,7 @@ def make_data_loader(cfg, split=True, is_distributed=False, start_iter=0):
     dataset_list = cfg.DATASETS.TRAIN if split else cfg.DATASETS.TEST
 
     transforms = build_transforms(cfg, split)
-    datasets, collate_fn = build_dataset(dataset_list, transforms, DatasetCatalog, split)
+    datasets, collate_fn = build_dataset(dataset_list, transforms, DatasetCatalog, cfg.DATASETS.DATACLASS, split)
 
     data_loaders = []
     for dataset in datasets:

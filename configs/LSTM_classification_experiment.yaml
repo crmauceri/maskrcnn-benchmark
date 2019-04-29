@@ -8,13 +8,14 @@ LOSS_WEIGHTS:
   USE_TEXT_LOSS: True
   TEXT_LOSS: 1.0
 DATASETS:
+  DATACLASS: "ReferExpressionDataset"
   TRAIN: ("refcocogoogle_train", "refcocogoogle_val")
   TEST: ("refcocogoogle_test",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:
-  BASE_LR: 0.02
+  BASE_LR: 0.005
   WEIGHT_DECAY: 0.0001
   STEPS: (60000, 80000)
-  MAX_ITER: 10000
+  MAX_ITER: 100000
 OUTPUT_DIR: output/LSTM_classification_experiments/

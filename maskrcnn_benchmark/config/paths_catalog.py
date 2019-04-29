@@ -174,8 +174,23 @@ class DatasetCatalog(object):
     }
 
     @staticmethod
-    def get(name):
-        if "sunspot" in name or "ref" in name:
+    def get(name, dataclass):
+        if dataclass == 'HHADataset':
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name.split('_')[0]]
+            args = dict(
+                img_root=os.path.join(data_dir, attrs["img_dir"]),
+                ann_file=os.path.join(data_dir, attrs["ann_file"]),
+                has_depth=attrs["has_depth"],
+                depth_root=os.path.join(data_dir, attrs["depth_root"]) if "depth_root" in attrs else None,
+                active_split=name.split('_')[1],
+                exclude_list=attrs["exclude_list"] if "exclude_list" in attrs else []
+            )
+            return dict(
+                factory="HHADataset",
+                args=args,
+            )
+        elif dataclass == 'ReferExpressionDataset':
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name.split('_')[0]]
             args = dict(
@@ -192,7 +207,7 @@ class DatasetCatalog(object):
                 factory="ReferExpressionDataset",
                 args=args,
             )
-        elif "coco" in name or "sunrgbd" in name:
+        elif dataclass == 'COCODataset':
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(
@@ -203,18 +218,19 @@ class DatasetCatalog(object):
                 factory="COCODataset",
                 args=args,
             )
-        elif "voc" in name:
-            data_dir = DatasetCatalog.DATA_DIR
-            attrs = DatasetCatalog.DATASETS[name]
-            args = dict(
-                data_dir=os.path.join(data_dir, attrs["data_dir"]),
-                split=attrs["split"],
-            )
-            return dict(
-                factory="PascalVOCDataset",
-                args=args,
-            )
-        raise RuntimeError("Dataset not available: {}".format(name))
+        elif dataclass == 'PascalVOCDataset':
+                data_dir = DatasetCatalog.DATA_DIR
+                attrs = DatasetCatalog.DATASETS[name]
+                args = dict(
+                    data_dir=os.path.join(data_dir, attrs["data_dir"]),
+                    split=attrs["split"],
+                )
+                return dict(
+                    factory="PascalVOCDataset",
+                    args=args,
+                )
+        else:
+            raise RuntimeError("Dataset not available: {}".format(dataclass))
 
 
 class ModelCatalog(object):
