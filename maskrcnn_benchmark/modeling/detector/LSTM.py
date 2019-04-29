@@ -156,7 +156,7 @@ class ClassificationModel(LanguageModel):
         self.clear_gradients(len(instance))
 
         sentence = instance.get_field('tokens')
-        sentence_ids = batch_to_ids(sentence)
+        sentence_ids = batch_to_ids(sentence).to(device)
         embeds = self.embedding(sentence_ids)
         embeds = self.dropout1(embeds['elmo_representations'][1])
         batch_size, seq_len, feat_dim = embeds.size()
