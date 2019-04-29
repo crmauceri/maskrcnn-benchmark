@@ -172,7 +172,7 @@ if __name__=="__main__":
     cfg.merge_from_list(args.opts)
     cfg.freeze()
 
-    data_loader = make_data_loader(cfg, is_train=False, is_distributed=False)
+    data_loader = make_data_loader(cfg, split=False, is_distributed=False)
     dataset_name = cfg.DATASETS.TEST[0]
 
     output_folder = os.path.join(cfg.OUTPUT_DIR, "inference", dataset_name)

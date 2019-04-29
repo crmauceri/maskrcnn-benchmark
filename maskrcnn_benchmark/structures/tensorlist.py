@@ -59,6 +59,12 @@ class TensorList(object):
                     tensor.add_field(k, v[item])
                 elif isinstance(item, int):
                     tensor.add_field(k, [v[item]])
+                elif isinstance(item, tuple) and isinstance(item[0], slice):
+                    v = v[item[0]]
+                    if isinstance(v[0], list):
+                        tensor.add_field(k, [v_el[item[1]] for v_el in v])
+                    else:
+                        tensor.add_field(k, v)
                 else:
                     tensor.add_field(k, [v[ind] for ind, i in enumerate(item) if i == 1])
             except IndexError as E:

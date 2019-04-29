@@ -1,12 +1,17 @@
-# Use pretrained model to predict sunspot segmentation
-# TODO the test script needs ground truth that matches the labels from coco. Our label indexes aren't the same
 MODEL:
-  META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "catalog://Caffe2Detectron/COCO/35857890/e2e_faster_rcnn_R-101-FPN_1x"
+  META_ARCHITECTURE: "RefExpRCNN"
+  WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
   BACKBONE:
-    CONV_BODY: "R-101-FPN"
+    CONV_BODY: "R-50-FPN"
+    DEPTH: False
+    FREEZE_CONV_BODY_AT: 1  #Freezes the weights of the R-50, but not the RPN
   RESNETS:
     BACKBONE_OUT_CHANNELS: 256
+  LSTM:
+    MODEL_ARCH: "LanguageModel"
+    VOCAB_N: 12731
+    HIDDEN: 1024
+    DROPOUT: 0
   RPN:
     USE_FPN: True
     ANCHOR_STRIDE: (4, 8, 16, 32, 64)
@@ -22,6 +27,7 @@ MODEL:
     POOLER_SAMPLING_RATIO: 2
     FEATURE_EXTRACTOR: "FPN2MLPFeatureExtractor"
     PREDICTOR: "FPNPredictor"
+    NUM_CLASSES: 81
   ROI_MASK_HEAD:
     POOLER_SCALES: (0.25, 0.125, 0.0625, 0.03125)
     FEATURE_EXTRACTOR: "MaskRCNNFPNFeatureExtractor"
@@ -31,13 +37,23 @@ MODEL:
     RESOLUTION: 28
     SHARE_BOX_FEATURE_EXTRACTOR: False
   MASK_ON: True
+LOSS_WEIGHTS:
+  USE_IMG_LOSS: False
+  USE_TEXT_LOSS: True
+  TEXT_LOSS: 0.01
+  refexp_loss_objectness: 1.0
+  refexp_loss_rpn_box_reg: 1.0
+  refexp_loss_classifier: 1.0
+  refexp_loss_box_reg: 1.0
+  refexp_loss_mask: 1.0
 DATASETS:
-  TRAIN: ("coco_2014_train", "coco_2014_valminusminival")
-  TEST: ("sunrgbd_test",)
+  TRAIN: ("refcocoggoogle_train", "refcocoggoogle_val")
+  TEST: ("refcocoggoogle_test",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:
   BASE_LR: 0.02
   WEIGHT_DECAY: 0.0001
   STEPS: (60000, 80000)
-  MAX_ITER: 90000
+  MAX_ITER: 10000
+OUTPUT_DIR: output/refcocog_refexprcnn_language_model/

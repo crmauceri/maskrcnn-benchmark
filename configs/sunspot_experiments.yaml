@@ -1,3 +1,4 @@
+#First model
 MODEL:
   META_ARCHITECTURE: "RefExpRCNN_Old"
   WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"

@@ -1,7 +1,14 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-# Set up custom environment before nearly anything else is imported
-# NOTE: this should be the first import (no not reorder)
-from maskrcnn_benchmark.utils.env import setup_environment  # noqa F401 isort:skip
+import cv2
+import torch
+from torchvision import transforms as T
+
+from maskrcnn_benchmark.modeling.detector import build_detection_model
+from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
+from maskrcnn_benchmark.structures.image_list import to_image_list
+from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
+from maskrcnn_benchmark import layers as L
+from maskrcnn_benchmark.utils import cv2_util
 
 import argparse
 import os
@@ -9,7 +16,7 @@ import os
 import torch
 from maskrcnn_benchmark.config import cfg
 from maskrcnn_benchmark.data import make_data_loader
-from maskrcnn_benchmark.engine.inference import inference, eval
+from maskrcnn_benchmark.engine.inference import inference
 from maskrcnn_benchmark.modeling.detector import build_detection_model
 from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
 from maskrcnn_benchmark.utils.collect_env import collect_env_info
@@ -89,15 +96,9 @@ def main():
             output_folder=output_folder,
         )
 
-        eval(predictions,
-             data_loader_val,
-             iou_types=iou_types,
-             box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
-             expected_results=cfg.TEST.EXPECTED_RESULTS,
-             expected_results_sigma_tol=cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
-        )
-
         synchronize()
+
+        #TODO For example in inference find the highest scoring prediction of the correct class, calculate mean IOU
 
 
 if __name__ == "__main__":

@@ -120,6 +120,8 @@ _C.MODEL.GROUP_NORM.EPSILON = 1e-5
 # LSTM options
 # ---------------------------------------------------------------------------- #
 _C.MODEL.LSTM = CN()
+# Type of text model
+_C.MODEL.LSTM.MODEL_ARCH = "LanguageModel"
 # Number of words in vocabulary
 _C.MODEL.LSTM.VOCAB_N = -1
 # Number of hidden dimensions in LSTM
@@ -394,6 +396,7 @@ _C.SOLVER.MAX_ITER = 40000
 
 _C.SOLVER.BASE_LR = 0.001
 _C.SOLVER.BIAS_LR_FACTOR = 2
+_C.SOLVER.L2_REG_FRACTION = 0.0
 
 _C.SOLVER.MOMENTUM = 0.9
 
@@ -415,7 +418,7 @@ _C.SOLVER.CHECKPOINT_PERIOD = 2000
 _C.SOLVER.IMS_PER_BATCH = 4
 
 _C.LOSS_WEIGHTS = CN()
-_C.LOSS_WEIGHTS.USE_IMG_LOSS = False
+_C.LOSS_WEIGHTS.USE_IMG_LOSS = True
 _C.LOSS_WEIGHTS.loss_objectness = 1.0
 _C.LOSS_WEIGHTS.loss_rpn_box_reg = 1.0
 _C.LOSS_WEIGHTS.loss_classifier = 1.0

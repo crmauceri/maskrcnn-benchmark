@@ -10,19 +10,13 @@ from maskrcnn_benchmark.structures.image_list import to_image_list
 from maskrcnn_benchmark.modeling.backbone import build_backbone
 from maskrcnn_benchmark.modeling.rpn.rpn import build_rpn
 from maskrcnn_benchmark.modeling.roi_heads.roi_heads import build_roi_heads
-from maskrcnn_benchmark.engine.trainer import reduce_loss_dict
 from maskrcnn_benchmark.structures.tensorlist import to_tensor_list
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 
-from maskrcnn_benchmark.modeling.language_models.LSTM import LanguageModel
+from maskrcnn_benchmark.modeling.detector.LSTM import LanguageModel, ClassificationModel
 
-import datetime
-import logging
-import time
 import itertools
 
-
-from maskrcnn_benchmark.utils.metric_logger import MetricLogger
 
 class DepthRCNN(nn.Module):
     """
@@ -182,8 +176,13 @@ class ReferExpRCNN(nn.Module):
         }
 
         # Text Embedding Network
-        self.wordnet = LanguageModel(cfg)
         self.use_text_loss = cfg.LOSS_WEIGHTS.USE_TEXT_LOSS
+        if cfg.MODEL.LSTM.MODEL_ARCH == "LanguageModel":
+            self.wordnet = LanguageModel(cfg)
+        elif cfg.MODEL.LSTM.MODEL_ARCH == "ClassificationModel":
+            self.wordnet = ClassificationModel(cfg)
+        else:
+            raise ValueError("LSTM Model not implemented")
 
         # Ref Localization Network
         self.refnet = DepthRCNN(cfg, weight_dict=self.ref_weight_dict, extra_features=self.wordnet.hidden_dim)
@@ -200,8 +199,6 @@ class ReferExpRCNN(nn.Module):
     def instance_prep(self, instance, device, seg_targets):
         images, HHAs, sentences = instance
         images, HHAs, seg_targets = self.refnet.instance_prep((images, HHAs), device, seg_targets)
-
-        sentences = [s.to(device) for s in sentences]
 
         ref_targets = []
         if self.training:
@@ -240,12 +237,7 @@ class ReferExpRCNN(nn.Module):
         image_features = self.refnet.features_forward(image_list, HHA_list)
 
         # Calculate text features
-        sentence_batch = to_tensor_list(sentences)
-        self.wordnet.clear_gradients(batch_size=len(sentence_batch))
-        sentence_targets = sentence_batch.get_target()
-
-        text_prediction = self.wordnet(sentence_batch)
-        text_loss = self.wordnet.loss_function(text_prediction, sentence_targets)
+        text_loss = self.wordnet(instance, device)
         text_features = self.wordnet.hidden[0]
         text_shape = text_features.shape
 
@@ -280,12 +272,13 @@ class ReferExpRCNN(nn.Module):
 
             # Language model
             if self.use_text_loss:
-                losses['text_loss'] = text_loss
+                losses.update(text_loss)
 
             return losses
 
         return result
 
+# TODO DEPRECATED
 class ReferExpRCNN_Old(DepthRCNN):
     """
     Main class for Generalized R-CNN. Currently supports boxes and masks.

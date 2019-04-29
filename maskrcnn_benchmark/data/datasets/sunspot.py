@@ -113,7 +113,7 @@ class ReferExpressionDataset(HHADataset):
         sents.add_field('tokens', [sentence['tokens']])
         sents.add_field('img_id', [img_idx])
 
-        ann_id  = int(self.coco.sentToRef[sent_idx]['ann_id'])
+        ann_id = self.coco.sentToRef[sent_idx]['ann_id']
         sents.add_field('ann_id', [ann_id])
 
         ann_target = [t for t in target if ann_id in t.get_field('ann_id')]

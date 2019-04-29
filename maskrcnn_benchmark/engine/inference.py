@@ -60,11 +60,7 @@ def inference(
         model,
         data_loader,
         dataset_name,
-        iou_types=("bbox",),
-        box_only=False,
         device="cuda",
-        expected_results=(),
-        expected_results_sigma_tol=4,
         output_folder=None,
 ):
     # convert to a torch.device for efficiency
@@ -107,6 +103,17 @@ def inference(
 
     if output_folder:
         torch.save(predictions, os.path.join(output_folder, "predictions.pth"))
+
+def eval(
+            predictions,
+            data_loader,
+            iou_types=("bbox",),
+            box_only=False,
+            expected_results=(),
+            expected_results_sigma_tol=4,
+            output_folder=None,
+):
+    dataset = data_loader.dataset
 
     extra_args = dict(
         box_only=box_only,

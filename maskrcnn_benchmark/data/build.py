@@ -111,9 +111,9 @@ def make_batch_data_sampler(
     return batch_sampler
 
 
-def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
+def make_data_loader(cfg, split=True, is_distributed=False, start_iter=0):
     num_gpus = get_world_size()
-    if is_train:
+    if split:
         images_per_batch = cfg.SOLVER.IMS_PER_BATCH
         assert (
             images_per_batch % num_gpus == 0
@@ -155,10 +155,10 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
         "maskrcnn_benchmark.config.paths_catalog", cfg.PATHS_CATALOG, True
     )
     DatasetCatalog = paths_catalog.DatasetCatalog
-    dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
+    dataset_list = cfg.DATASETS.TRAIN if split else cfg.DATASETS.TEST
 
-    transforms = build_transforms(cfg, is_train)
-    datasets, collate_fn = build_dataset(dataset_list, transforms, DatasetCatalog, is_train)
+    transforms = build_transforms(cfg, split)
+    datasets, collate_fn = build_dataset(dataset_list, transforms, DatasetCatalog, split)
 
     data_loaders = []
     for dataset in datasets:
@@ -175,7 +175,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
             collate_fn=collator,
         )
         data_loaders.append(data_loader)
-    if is_train:
+    if split:
         # during training, a single (possibly concatenated) data_loader is returned
         assert len(data_loaders) == 1
         return data_loaders[0]

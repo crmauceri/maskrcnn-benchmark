@@ -1,6 +1,7 @@
 import argparse
 import torch, cv2, os
 import matplotlib.pyplot as plt
+import numpy as np
 from maskrcnn_benchmark import layers as L
 from maskrcnn_benchmark.utils import cv2_util
 from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
@@ -9,6 +10,7 @@ from maskrcnn_benchmark.config import cfg
 from maskrcnn_benchmark.utils.imports import import_file
 
 from maskrcnn_benchmark.data.build import build_dataset
+from maskrcnn_benchmark.data.datasets.sunspot import  ReferExpressionDataset
 from maskrcnn_benchmark.data.transforms import build_transforms
 from torchvision.transforms import ToPILImage
 
@@ -29,33 +31,37 @@ def main(prediction_file, cfg, show_mask_heatmaps=False):
     DatasetCatalog = paths_catalog.DatasetCatalog
     dataset_list = cfg.DATASETS.TEST
 
-    transforms = build_transforms(cfg, is_train=False)
-    datasets, collate_fn = build_dataset(dataset_list, transforms, DatasetCatalog, is_train=False)
+    datasets, collate_fn = build_dataset(dataset_list, None, DatasetCatalog, is_train=False)
     dataset = datasets[0]
 
     for i in range(len(predictions_list)):
 
         #Get image and sentence
         predictions = predictions_list[i]
-        (image, hha, sentence), targets, id = dataset[i]
+        instance, targets, id = dataset[i]
 
-        #image= trans(image).convert("RGB")
+        if isinstance(dataset, ReferExpressionDataset):
+            (image, hha, sentence) = instance
+            title = " ".join(sentence.get_field('tokens')[0])
+        else:
+            image = instance
+            title = id
 
         prediction = vis.load_predictions(predictions, image)
         top_prediction = vis.select_top_predictions(prediction)
+        if len(top_prediction) > 0:
+            result = np.array(image.copy())
+            if show_mask_heatmaps:
+                result = vis.create_mask_montage(result, top_prediction)
+            result = vis.overlay_boxes(result, top_prediction)
+            if cfg.MODEL.MASK_ON:
+                result = vis.overlay_mask(result, top_prediction)
 
-        result = trans(image).convert("RGB")
-        if show_mask_heatmaps:
-            return vis.create_mask_montage(result, top_prediction)
-        result = vis.overlay_boxes(result, top_prediction)
-        if cfg.MODEL.MASK_ON:
-            result = vis.overlay_mask(result, top_prediction)
+            plt.imshow(result)
+            plt.title(title)
+            plt.show()
 
-        plt.imshow(result)
-        plt.title(" ".join(sentence.get_field('tokens')[0]))
-        plt.show()
-
-        print("Done")
+            print("Done")
 
 class Visualizer(object):
 
@@ -90,7 +96,7 @@ class Visualizer(object):
         prediction = predictions[0]
 
         # reshape prediction (a BoxList) into the original image size
-        height, width = original_image.shape[:-1]
+        height, width = original_image.size
         prediction = prediction.resize((width, height))
 
         if prediction.has_field("mask"):
@@ -149,7 +155,7 @@ class Visualizer(object):
         for box, color in zip(boxes, colors):
             box = box.to(torch.int64)
             top_left, bottom_right = box[:2].tolist(), box[2:].tolist()
-            image = cv2.rectangle(
+            cv2.rectangle(
                 image, tuple(top_left), tuple(bottom_right), tuple(color), 1
             )
 
@@ -221,12 +227,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")
     parser.add_argument(
         "--config-file",
-        default="configs/sunspot_experiments.yaml",
+        default="configs/coco_sun_test.yaml",
         metavar="FILE",
         help="path to config file",
     )
     parser.add_argument("--prediction_file",
-                        default="output/sunspot_experiments_roi_low_weight/inference/sunspot_test/predictions.pth", metavar="FILE",
+                        default="output/coco_sun_test/inference/coco_sun/predictions.pth", metavar="FILE",
                         help="path to prediction file")
     parser.add_argument(
         "opts",

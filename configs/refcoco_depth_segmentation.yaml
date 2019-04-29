@@ -1,10 +1,10 @@
-# Use pretrained model to predict sunspot segmentation
-# TODO the test script needs ground truth that matches the labels from coco. Our label indexes aren't the same
+# e2e_mask_rcnn_R_50_FPN_1x
 MODEL:
-  META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "catalog://Caffe2Detectron/COCO/35857890/e2e_faster_rcnn_R-101-FPN_1x"
+  META_ARCHITECTURE: "DepthRCNN"
+  WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
   BACKBONE:
-    CONV_BODY: "R-101-FPN"
+    CONV_BODY: "R-50-FPN"
+    DEPTH: True
   RESNETS:
     BACKBONE_OUT_CHANNELS: 256
   RPN:
@@ -22,6 +22,7 @@ MODEL:
     POOLER_SAMPLING_RATIO: 2
     FEATURE_EXTRACTOR: "FPN2MLPFeatureExtractor"
     PREDICTOR: "FPNPredictor"
+    NUM_CLASSES: 81
   ROI_MASK_HEAD:
     POOLER_SCALES: (0.25, 0.125, 0.0625, 0.03125)
     FEATURE_EXTRACTOR: "MaskRCNNFPNFeatureExtractor"
@@ -32,12 +33,13 @@ MODEL:
     SHARE_BOX_FEATURE_EXTRACTOR: False
   MASK_ON: True
 DATASETS:
-  TRAIN: ("coco_2014_train", "coco_2014_valminusminival")
-  TEST: ("sunrgbd_test",)
+  TRAIN: ("refcocogoogle_train", "refcocogoogle_val")
+  TEST: ("refcocogoogle_test",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:
   BASE_LR: 0.02
   WEIGHT_DECAY: 0.0001
   STEPS: (60000, 80000)
-  MAX_ITER: 90000
+  MAX_ITER: 10000
+OUTPUT_DIR: output/refcoco_depth_segmentation/

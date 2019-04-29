@@ -4,6 +4,7 @@ MODEL:
   BACKBONE:
     CONV_BODY: "R-50-FPN"
     DEPTH: False
+    FREEZE_CONV_BODY_AT: 1  #Freezes the weights of the R-50, but not the RPN
   RESNETS:
     BACKBONE_OUT_CHANNELS: 256
   LSTM:
