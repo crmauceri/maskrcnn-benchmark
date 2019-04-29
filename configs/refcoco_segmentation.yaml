@@ -1,9 +1,10 @@
 # e2e_mask_rcnn_R_50_FPN_1x
 MODEL:
-  META_ARCHITECTURE: "GeneralizedRCNN"
+  META_ARCHITECTURE: "DepthRCNN"
   WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
   BACKBONE:
     CONV_BODY: "R-50-FPN"
+    DEPTH: False
   RESNETS:
     BACKBONE_OUT_CHANNELS: 256
   RPN:
