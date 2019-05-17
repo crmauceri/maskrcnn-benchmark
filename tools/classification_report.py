@@ -106,9 +106,9 @@ def main(cfg):
     for idx in tqdm(range(len(dataset))):
         try:
             instance_t = dataset[idx]
-            instance, target = model.prepare_instance(instance_t[0], cpu_device)
+            instance, target = model.prepare_instance(instance_t[0], device=cfg.MODEL.DEVICE)
             with torch.no_grad():
-                prediction = model(instance_t[0], device=cpu_device)
+                prediction = model(instance_t[0], device=cfg.MODEL.DEVICE)
 
             super_gt.append(super_categories.index(dataset.coco.cats[
                                                          dataset.contiguous_category_id_to_json_id[
