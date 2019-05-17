@@ -129,8 +129,8 @@ def main(cfg):
     fig1.savefig('{}/supercategory_confusion.pdf'.format(cfg.OUTPUT_DIR), bbox_inches='tight')
     fig2.savefig('{}/fine_confusion.pdf'.format(cfg.OUTPUT_DIR), bbox_inches='tight')
 
-    super_report = classification_report(super_gt, super_pred, target_names=super_categories)
-    fine_report = classification_report(fine_gt, fine_pred, target_names=fine_categories)
+    super_report = classification_report(super_gt, super_pred, target_names=np.array(super_categories)[unique_labels(super_gt, super_pred)])
+    fine_report = classification_report(fine_gt, fine_pred, target_names=np.array(fine_categories)[unique_labels(fine_gt, fine_pred)])
 
     print(super_report)
     print(fine_report)
