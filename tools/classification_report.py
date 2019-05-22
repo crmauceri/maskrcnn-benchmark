@@ -89,7 +89,6 @@ def main(cfg):
     checkpointer = DetectronCheckpointer(cfg, model, save_dir=output_dir)
     _ = checkpointer.load(cfg.MODEL.WEIGHT)
     model.eval()
-    cpu_device = torch.device("cpu")
 
     super_gt = []
     fine_gt = []
@@ -135,7 +134,10 @@ def main(cfg):
     print(super_report)
     print(fine_report)
 
-
+    with open('{}/classification_report.txt'.format(cfg.OUTPUT_DIR), 'w') as f:
+        f.write(super_report)
+        f.write('\n')
+        f.write(fine_report)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")

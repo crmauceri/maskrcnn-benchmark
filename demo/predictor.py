@@ -1,11 +1,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import cv2
 import torch
+import numpy as np
+from PIL import Image
 from torchvision import transforms as T
 
 from maskrcnn_benchmark.modeling.detector import build_detection_model
 from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
-from maskrcnn_benchmark.structures.image_list import to_image_list
 from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
 from maskrcnn_benchmark import layers as L
 from maskrcnn_benchmark.utils import cv2_util
@@ -116,8 +117,6 @@ class SUNSpotDemo(object):
         checkpointer = DetectronCheckpointer(cfg, self.model, save_dir=save_dir)
         _ = checkpointer.load(cfg.MODEL.WEIGHT)
 
-        self.transforms = self.build_transform()
-
         mask_threshold = -1 if show_mask_heatmaps else 0.5
         self.masker = Masker(threshold=mask_threshold, padding=1)
 
@@ -129,50 +128,23 @@ class SUNSpotDemo(object):
         self.show_mask_heatmaps = show_mask_heatmaps
         self.masks_per_dim = masks_per_dim
 
-    def build_transform(self):
-        """
-        Creates a basic transformation that was used to train the models
-        """
-        cfg = self.cfg
 
-        # we are loading images with OpenCV, so we don't need to convert them
-        # to BGR, they are already! So all we need to do is to normalize
-        # by 255 if we want to convert to BGR255 format, or flip the channels
-        # if we want it to be in RGB in [0-1] range.
-        if cfg.INPUT.TO_BGR255:
-            to_bgr_transform = T.Lambda(lambda x: x * 255)
-        else:
-            to_bgr_transform = T.Lambda(lambda x: x[[2, 1, 0]])
-
-        normalize_transform = T.Normalize(
-            mean=cfg.INPUT.PIXEL_MEAN, std=cfg.INPUT.PIXEL_STD
-        )
-
-        transform = T.Compose(
-            [
-                T.ToPILImage(),
-                T.Resize(self.min_image_size),
-                T.ToTensor(),
-                to_bgr_transform,
-                normalize_transform,
-            ]
-        )
-        return transform
-
-    def run_on_opencv_image(self, image):
+    def run_on_image(self, image_tensor, image_cv):
         """
         Arguments:
-            image (np.ndarray): an image as returned by OpenCV
+            image_tensor (ImageList): an image as loaded by DataLoader
+            image_cv (PIL) : the same image in PIL format
 
         Returns:
             prediction (BoxList): the detected objects. Additional information
                 of the detection properties can be found in the fields of
                 the BoxList via `prediction.fields()`
         """
-        predictions = self.compute_prediction(image)
+        width, height = image_cv.size
+        predictions = self.compute_prediction(image_tensor, width, height)
         top_predictions = self.select_top_predictions(predictions)
 
-        result = image.copy()
+        result = np.array(image_cv.copy())
         if self.show_mask_heatmaps:
             return self.create_mask_montage(result, top_predictions)
         result = self.overlay_boxes(result, top_predictions)
@@ -182,32 +154,26 @@ class SUNSpotDemo(object):
 
         return result
 
-    def compute_prediction(self, original_image):
+    def compute_prediction(self, image_tensor, width, height):
         """
         Arguments:
-            original_image (np.ndarray): an image as returned by OpenCV
+            image_tensor (ImageList): an image as loaded by DataLoader
+            width, height (int) : the dimensions of the original image
 
         Returns:
             prediction (BoxList): the detected objects. Additional information
                 of the detection properties can be found in the fields of
                 the BoxList via `prediction.fields()`
         """
-        # apply pre-processing to image
-        image = self.transforms(original_image)
-        # convert to an ImageList, padded so that it is divisible by
-        # cfg.DATALOADER.SIZE_DIVISIBILITY
-        image_list = to_image_list(image, self.cfg.DATALOADER.SIZE_DIVISIBILITY)
-        image_list = image_list.to(self.device)
         # compute predictions
         with torch.no_grad():
-            predictions = self.model(image_list, self.device)
+            predictions = self.model(image_tensor, self.device)
         predictions = [o.to(self.cpu_device) for o in predictions]
 
         # always single image is passed at a time
         prediction = predictions[0]
 
         # reshape prediction (a BoxList) into the original image size
-        height, width = original_image.shape[:-1]
         prediction = prediction.resize((width, height))
 
         if prediction.has_field("mask"):
@@ -357,3 +323,41 @@ class SUNSpotDemo(object):
             )
 
         return image
+
+if __name__ == "__main__":
+    import argparse
+    from maskrcnn_benchmark.config import cfg
+    from maskrcnn_benchmark.data import make_data_loader
+
+    parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")
+    parser.add_argument(
+        "--config-file",
+        default="configs/original/caffe2/e2e_mask_rcnn_R_50_FPN_1x_caffe2.yaml",
+        metavar="FILE",
+        help="path to config file",
+    )
+
+    parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
+    args = parser.parse_args()
+
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    cfg.TEST.IMS_PER_BATCH = 1
+    cfg.freeze()
+
+    data_loaders = make_data_loader(cfg, split=False, is_distributed=False)
+
+    demo = SUNSpotDemo(cfg, show_mask_heatmaps=False)
+    for index, instance in enumerate(data_loaders[0]):
+        image_tensor = instance[0]
+        image_cv = data_loaders[0].dataset.loadPIL(index)
+        result = demo.run_on_image(image_tensor, image_cv)
+
+        img = Image.fromarray(result, 'RGB')
+        img.show()
+        input("Press enter to continue")

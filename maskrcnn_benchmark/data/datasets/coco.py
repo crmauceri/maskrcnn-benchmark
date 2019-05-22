@@ -110,3 +110,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         img_id = self.id_to_img_map[index]
         img_data = self.coco.imgs[img_id]
         return img_data
+
+    def loadPIL(self, idx):
+        img, anno = super(COCODataset, self).__getitem__(idx)
+        return img
