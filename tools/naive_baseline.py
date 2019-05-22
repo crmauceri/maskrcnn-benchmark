@@ -99,7 +99,6 @@ class SegmentationHelper(object):
         # used to make colors for each class
         self.palette = torch.tensor([2 ** 25 - 1, 2 ** 15 - 1, 2 ** 21 - 1])
 
-        self.cpu_device = torch.device("cpu")
         self.confidence_threshold = confidence_threshold
         self.show_mask_heatmaps = show_mask_heatmaps
         self.masks_per_dim = masks_per_dim
@@ -133,7 +132,6 @@ class SegmentationHelper(object):
         # compute predictions
         with torch.no_grad():
             predictions = self.model(image_tensor, self.device)
-        predictions = [o.to(self.cpu_device) for o in predictions]
 
         # reshape prediction (a BoxList) into the original image size
         for index in range(len(predictions)):
