@@ -194,50 +194,53 @@ def main(cfg_text, cfg_segment):
     seg_iou = []
     bbox_iou = []
 
+    # Split=False is Test set
     data_loaders = make_data_loader(cfg_text, split=False, is_distributed=False)
-    for index, instance in tqdm(enumerate(data_loaders[0])):
-        #Group images
-        image_indexes = [x.get_field('img_id')[0] for x in instance[0][2]]
-        unique_indexes, unique_mask, unique_inverse = np.unique(image_indexes, return_index=True, return_inverse=True)
+    for dataset_index, data_loader in enumerate(data_loaders):
+        for index, instance in tqdm(enumerate(data_loader), desc=cfg_text.DATASETS.TEST[dataset_index]):
+            #Group images
+            image_indexes = [x.get_field('img_id')[0] for x in instance[0][2]]
+            unique_indexes, unique_mask, unique_inverse = np.unique(image_indexes, return_index=True, return_inverse=True)
 
-        with torch.no_grad():
-            prediction = language_model(instance[0], device=cfg_text.MODEL.DEVICE)
-            segmentation_prediction = seg_model.run_on_image(instance[0][0][unique_mask])
+            with torch.no_grad():
+                prediction = language_model(instance[0], device=cfg_text.MODEL.DEVICE)
+                segmentation_prediction = seg_model.run_on_image(instance[0][0][unique_mask])
 
-        _, pred_ind = prediction[:, -1, :].max(1)
+            _, pred_ind = prediction[:, -1, :].max(1)
 
-        for j in range(len(pred_ind)):
-            segs = segmentation_prediction[unique_inverse[j]]
-            label = pred_ind[j]
+            for j in range(len(pred_ind)):
+                segs = segmentation_prediction[unique_inverse[j]]
+                label = pred_ind[j]
 
-            ann_seg = instance[0][2][j].get_field('ann_target')[0]
-            fine_gt.append(ann_seg.get_field('labels').item())
+                ann_seg = instance[0][2][j].get_field('ann_target')[0]
+                fine_gt.append(ann_seg.get_field('labels').item())
 
-            label_mask = segs.get_field('labels') == label
-            if any(label_mask):
-                score, top_ind = segs[label_mask].get_field('scores').max(0)
-                top_seg = segs[label_mask][top_ind]
+                label_mask = segs.get_field('labels') == label
+                if any(label_mask):
+                    score, top_ind = segs[label_mask].get_field('scores').max(0)
+                    top_seg = segs[label_mask][top_ind]
 
-                bbox_iou.append(IOU(top_seg.bbox.tolist()[0], ann_seg.bbox.tolist()[0]))
-                if top_seg.has_field('mask'):
-                    top_mask = top_seg.get_field('mask').squeeze()
-                    ann_mask = ann_seg.get_field('masks').masks[0].mask
-                    seg_iou.append(IOU(top_mask, ann_mask))
+                    bbox_iou.append(IOU(top_seg.bbox.tolist()[0], ann_seg.bbox.tolist()[0]))
+                    if top_seg.has_field('mask'):
+                        top_mask = top_seg.get_field('mask').squeeze()
+                        ann_mask = ann_seg.get_field('masks').masks[0].mask
+                        seg_iou.append(IOU(top_mask, ann_mask))
+                    else:
+                        seg_iou.append(0.0)
                 else:
+                    bbox_iou.append(0.0)
                     seg_iou.append(0.0)
-            else:
-                bbox_iou.append(0.0)
-                seg_iou.append(0.0)
 
-    print("Mean Segmentation IOU: {}".format(np.mean(seg_iou)))
-    print("Mean Bounding Box IOU: {}".format(np.mean(bbox_iou)))
+        with open('{}/{}_baseline_report.txt'.format(cfg_text.OUTPUT_DIR, cfg_text.DATASETS.TEST[dataset_index]), 'w') as f:
+            f.write("Mean Segmentation IOU: {}\n".format(np.mean(seg_iou)))
+            f.write("Mean Bounding Box IOU: {}\n".format(np.mean(bbox_iou)))
 
-    print("\n Class \t Seg IOU \t BBox IOU \t Support")
-    for label in data_loaders[0].dataset.coco.cats.values():
-        mask = torch.Tensor(fine_gt) == label['id']
-        seg_iou = torch.Tensor(seg_iou)
-        bbox_iou = torch.Tensor(bbox_iou)
-        print("{} \t {:.2f} \t {:.2f} \t{:d}".format(label['name'], torch.mean(seg_iou[mask]), torch.mean(bbox_iou[mask]), torch.sum(mask)))
+            f.write("\n Class \t Seg IOU \t BBox IOU \t Support")
+            for label in data_loaders[0].dataset.coco.cats.values():
+                mask = torch.Tensor(fine_gt) == label['id']
+                seg_iou = torch.Tensor(seg_iou)
+                bbox_iou = torch.Tensor(bbox_iou)
+                f.write("\n{} \t {:.2f} \t {:.2f} \t{:d}".format(label['name'], torch.mean(seg_iou[mask]), torch.mean(bbox_iou[mask]), torch.sum(mask)))
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import numpy as np
 from maskrcnn_benchmark.config import cfg
 from maskrcnn_benchmark.utils.imports import import_file
 
-from maskrcnn_benchmark.data.build import build_dataset
+from maskrcnn_benchmark.data import make_data_loader
 from maskrcnn_benchmark.modeling.detector import build_detection_model
 from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
 
@@ -72,15 +72,6 @@ def plot_confusion_matrix(y_true, y_pred, classes,
 
 def main(cfg):
 
-    paths_catalog = import_file(
-        "maskrcnn_benchmark.config.paths_catalog", cfg.PATHS_CATALOG, True
-    )
-    DatasetCatalog = paths_catalog.DatasetCatalog
-    dataset_list = cfg.DATASETS.TEST
-
-    datasets, collate_fn = build_dataset(dataset_list, None, DatasetCatalog, data_class=cfg.DATASETS.DATACLASS, is_train=False)
-    dataset = datasets[0]
-
     # Load saved network
     model = build_detection_model(cfg)
     model.to(cfg.MODEL.DEVICE)
@@ -95,49 +86,58 @@ def main(cfg):
     super_pred = []
     fine_pred = []
 
-    super_categories = list(set([dataset.coco.cats[value]['supercategory'] for key,value in
-                                                   dataset.contiguous_category_id_to_json_id.items()]))
+    categories = None
+    super_categories = None
+    fine_categories = None
+    continuous_index = None
 
-    fine_categories = ['unknown']
-    fine_categories.extend([dataset.coco.cats[value]['name'] for key, value in
-                                 dataset.contiguous_category_id_to_json_id.items()])
+    # Split=False is Test set
+    data_loaders = make_data_loader(cfg, split=False, is_distributed=False)
+    for dataset_index, data_loader in enumerate(data_loaders):
+        dataset = data_loader.dataset
 
-    for idx in tqdm(range(len(dataset))):
-        try:
-            instance_t = dataset[idx]
-            instance, target = model.prepare_instance(instance_t[0], device=cfg.MODEL.DEVICE)
-            with torch.no_grad():
-                prediction = model(instance_t[0], device=cfg.MODEL.DEVICE)
+        if categories is None:
+            categories = dataset.coco.cats
+            continuous_index = dataset.contiguous_category_id_to_json_id
+            super_categories = list(set([categories[value]['supercategory'] for key,value in
+                                                continuous_index.items()]))
+            fine_categories = ['unknown']
+            fine_categories.extend([categories[value]['name'] for key, value in
+                                         continuous_index.items()])
 
-            super_gt.append(super_categories.index(dataset.coco.cats[
-                                                         dataset.contiguous_category_id_to_json_id[
-                                                             target[0].item()]]['supercategory']))
-            fine_gt.append(target[0].item())
 
-            _, pred_ind = prediction[:,-1,:].max(1)
-            super_pred.append(super_categories.index(dataset.coco.cats[
-                                                         dataset.contiguous_category_id_to_json_id[
-                                                             pred_ind[0].item()]]['supercategory']))
-            fine_pred.append(pred_ind[0].item())
-        except FileNotFoundError as e:
-            print(e)
+        for index, instance_t in tqdm(enumerate(data_loader), desc=cfg.DATASETS.TEST[dataset_index]):
+            try:
+                instance, target = model.prepare_instance(instance_t[0], device=cfg.MODEL.DEVICE)
+                with torch.no_grad():
+                    prediction = model(instance_t[0], device=cfg.MODEL.DEVICE)
 
-    fig1, ax1 = plot_confusion_matrix(super_gt, super_pred, classes=np.array(super_categories), title="Supercategory confusion", normalize=True)
-    fig2, ax2 = plot_confusion_matrix(fine_gt, fine_pred, classes=np.array(fine_categories), title="Fine-grained confusion", normalize=True)
+                super_gt.append(super_categories.index(categories[continuous_index[target.item()]]['supercategory']))
+                fine_gt.append(continuous_index[target.item()])
 
-    fig1.savefig('{}/supercategory_confusion.pdf'.format(cfg.OUTPUT_DIR), bbox_inches='tight')
-    fig2.savefig('{}/fine_confusion.pdf'.format(cfg.OUTPUT_DIR), bbox_inches='tight')
+                _, pred_ind = prediction[:,-1,:].max(1)
+                super_pred.append(super_categories.index(categories[continuous_index[pred_ind.item()]]['supercategory']))
+                fine_pred.append(continuous_index[pred_ind.item()])
+            except FileNotFoundError as e:
+                print(e)
 
-    super_report = classification_report(super_gt, super_pred, target_names=np.array(super_categories)[unique_labels(super_gt, super_pred)])
-    fine_report = classification_report(fine_gt, fine_pred, target_names=np.array(fine_categories)[unique_labels(fine_gt, fine_pred)])
+        fig1, ax1 = plot_confusion_matrix(super_gt, super_pred, classes=np.array(super_categories), title="Supercategory confusion", normalize=True)
+        fig2, ax2 = plot_confusion_matrix(fine_gt, fine_pred, classes=np.array(fine_categories), title="Fine-grained confusion", normalize=True)
 
-    print(super_report)
-    print(fine_report)
+        fig1.savefig('{}/{}_supercategory_confusion.pdf'.format(cfg.OUTPUT_DIR, cfg.DATASETS.TEST[dataset_index]), bbox_inches='tight')
+        fig2.savefig('{}/{}_fine_confusion.pdf'.format(cfg.OUTPUT_DIR, cfg.DATASETS.TEST[dataset_index]), bbox_inches='tight')
 
-    with open('{}/classification_report.txt'.format(cfg.OUTPUT_DIR), 'w') as f:
-        f.write(super_report)
-        f.write('\n')
-        f.write(fine_report)
+        super_report = classification_report(super_gt, super_pred, target_names=np.array(super_categories)[unique_labels(super_gt, super_pred)])
+        fine_report = classification_report(fine_gt, fine_pred, target_names=np.array(fine_categories)[unique_labels(fine_gt, fine_pred)])
+
+        print(super_report)
+        print(fine_report)
+
+        with open('{}/{}_classification_report.txt'.format(cfg.OUTPUT_DIR, cfg.DATASETS.TEST[dataset_index]), 'w') as f:
+            f.write(super_report)
+            f.write('\n')
+            f.write(fine_report)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")
@@ -158,6 +158,7 @@ if __name__ == "__main__":
 
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+    cfg.TEST.IMS_PER_BATCH = 1
     cfg.freeze()
 
     main(cfg)
