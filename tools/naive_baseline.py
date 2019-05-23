@@ -196,23 +196,27 @@ def main(cfg_text, cfg_segment):
 
     data_loaders = make_data_loader(cfg_text, split=False, is_distributed=False)
     for index, instance in tqdm(enumerate(data_loaders[0])):
+        #Group images
+        image_indexes = [x.get_field('img_id')[0] for x in instance[0][2]]
+        unique_indexes, unique_mask, unique_inverse = np.unique(image_indexes, return_index=True, return_inverse=True)
+
         with torch.no_grad():
             prediction = language_model(instance[0], device=cfg_text.MODEL.DEVICE)
-            segmentation_prediction = seg_model.run_on_image(instance[0][0])
+            segmentation_prediction = seg_model.run_on_image(instance[0][0][unique_mask])
 
         _, pred_ind = prediction[:, -1, :].max(1)
+
         for j in range(len(pred_ind)):
-            segs = segmentation_prediction[j]
+            segs = segmentation_prediction[unique_inverse[j]]
             label = pred_ind[j]
+
+            ann_seg = instance[0][2][j].get_field('ann_target')[0]
+            fine_gt.append(ann_seg.get_field('labels').item())
 
             label_mask = segs.get_field('labels') == label
             if any(label_mask):
                 score, top_ind = segs[label_mask].get_field('scores').max(0)
                 top_seg = segs[label_mask][top_ind]
-
-                ann_seg = instance[0][2][j].get_field('ann_target')[0]
-
-                fine_gt.append(ann_seg.get_field('labels').item())
 
                 bbox_iou.append(IOU(top_seg.bbox.tolist()[0], ann_seg.bbox.tolist()[0]))
                 if top_seg.has_field('mask'):

@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 from __future__ import division
+from collections.abc import Iterable
 
 import torch
 
@@ -24,6 +25,24 @@ class ImageList(object):
     def to(self, *args, **kwargs):
         cast_tensor = self.tensors.to(*args, **kwargs)
         return ImageList(cast_tensor, self.image_sizes)
+
+    def __getitem__(self, item):
+
+        if isinstance(item, int):
+            image_sizes = self.image_sizes[item]
+        elif isinstance(item, Iterable):
+            image_sizes = [self.image_sizes[i] for i in item]
+        else:
+            raise ValueError("Not implemented for none iterable indices")
+
+        new_list = ImageList(self.tensors[item], image_sizes)
+        if isinstance(item, int):
+            new_list.tensors = new_list.tensors.unsqueeze(0)
+
+        return new_list
+
+    def __len__(self):
+        return self.tensors.shape[0]
 
 
 def to_image_list(tensors, size_divisible=0):
