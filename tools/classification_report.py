@@ -15,7 +15,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.utils.multiclass import unique_labels
 
 # Function from scikit tutorial https://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
-def plot_confusion_matrix(y_true, y_pred, classes,
+def plot_confusion_matrix(y_true, y_pred,
                           normalize=False,
                           title=None,
                           cmap=plt.cm.Blues):
@@ -32,7 +32,7 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     # Compute confusion matrix
     cm = confusion_matrix(y_true, y_pred)
     # Only use the labels that appear in the data
-    classes = classes[unique_labels(y_true, y_pred)]
+    classes = unique_labels(y_true, y_pred)
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         print("Normalized confusion matrix")
@@ -87,8 +87,8 @@ def main(cfg):
     fine_pred = []
 
     categories = None
-    super_categories = None
-    fine_categories = None
+    # super_categories = None
+    # fine_categories = None
     continuous_index = None
 
     # Split=False is Test set
@@ -99,11 +99,9 @@ def main(cfg):
         if categories is None:
             categories = dataset.coco.cats
             continuous_index = dataset.contiguous_category_id_to_json_id
-            super_categories = list(set([categories[value]['supercategory'] for key,value in
-                                                continuous_index.items()]))
-            fine_categories = ['unknown']
-            fine_categories.extend([categories[value]['name'] for key, value in
-                                         continuous_index.items()])
+            # super_categories = list(set([value['supercategory'] for key,value in categories.items()]))
+            # fine_categories = ['unknown']
+            # fine_categories.extend([value['name'] for key, value in categories.items()])
 
 
         for index, instance_t in tqdm(enumerate(data_loader), desc=cfg.DATASETS.TEST[dataset_index]):
@@ -112,23 +110,23 @@ def main(cfg):
                 with torch.no_grad():
                     prediction = model(instance_t[0], device=cfg.MODEL.DEVICE)
 
-                super_gt.append(super_categories.index(categories[continuous_index[target.item()]]['supercategory']))
-                fine_gt.append(continuous_index[target.item()])
+                super_gt.append(categories[continuous_index[target.item()]]['supercategory'])
+                fine_gt.append(categories[continuous_index[target.item()]]['name'])
 
                 _, pred_ind = prediction[:,-1,:].max(1)
-                super_pred.append(super_categories.index(categories[continuous_index[pred_ind.item()]]['supercategory']))
-                fine_pred.append(continuous_index[pred_ind.item()])
+                super_pred.append(categories[continuous_index[pred_ind.item()]]['supercategory'])
+                fine_pred.append((categories[continuous_index[pred_ind.item()]]['name']))
             except FileNotFoundError as e:
                 print(e)
 
-        fig1, ax1 = plot_confusion_matrix(super_gt, super_pred, classes=np.array(super_categories), title="Supercategory confusion", normalize=True)
-        fig2, ax2 = plot_confusion_matrix(fine_gt, fine_pred, classes=np.array(fine_categories), title="Fine-grained confusion", normalize=True)
+        fig1, ax1 = plot_confusion_matrix(super_gt, super_pred, title="Supercategory confusion", normalize=True)
+        fig2, ax2 = plot_confusion_matrix(fine_gt, fine_pred, title="Fine-grained confusion", normalize=True)
 
         fig1.savefig('{}/{}_supercategory_confusion.pdf'.format(cfg.OUTPUT_DIR, cfg.DATASETS.TEST[dataset_index]), bbox_inches='tight')
         fig2.savefig('{}/{}_fine_confusion.pdf'.format(cfg.OUTPUT_DIR, cfg.DATASETS.TEST[dataset_index]), bbox_inches='tight')
 
-        super_report = classification_report(super_gt, super_pred, target_names=np.array(super_categories)[unique_labels(super_gt, super_pred)])
-        fine_report = classification_report(fine_gt, fine_pred, target_names=np.array(fine_categories)[unique_labels(fine_gt, fine_pred)])
+        super_report = classification_report(super_gt, super_pred)
+        fine_report = classification_report(fine_gt, fine_pred)
 
         print(super_report)
         print(fine_report)
