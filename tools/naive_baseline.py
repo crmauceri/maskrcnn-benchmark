@@ -189,14 +189,13 @@ def main(cfg_text, cfg_segment):
     # Load saved segmentation network
     seg_model = SegmentationHelper(cfg_segment)
 
-    fine_gt = []
-
-    seg_iou = []
-    bbox_iou = []
-
     # Split=False is Test set
     data_loaders = make_data_loader(cfg_text, split=False, is_distributed=False)
     for dataset_index, data_loader in enumerate(data_loaders):
+        fine_gt = []
+        seg_iou = []
+        bbox_iou = []
+        
         for index, instance in tqdm(enumerate(data_loader), desc=cfg_text.DATASETS.TEST[dataset_index]):
             #Group images
             image_indexes = [x.get_field('img_id')[0] for x in instance[0][2]]
