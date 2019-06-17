@@ -23,44 +23,44 @@ class DatasetCatalog(object):
             "has_depth": False
         },
         "refcocoggoogle":{
-            "img_dir": "coco/train2014",
+            "img_dir": "coco/images/train2014",
             "ann_file": "coco/refcocog/instances.json",
             "refer_file": "coco/refcocog/refs(google).p",
             "vocab_file": "vocab_file.txt",
             "has_depth": True,
-            "depth_root": "coco/train2014/megadepth/"
+            "depth_root": "coco/images/megadepth/"
         },
         "refcocogumc": {
-            "img_dir": "coco/train2014",
+            "img_dir": "coco/images/train2014",
             "ann_file": "coco/refcocog/instances.json",
             "refer_file": "coco/refcocog/refs(umd).p",
             "vocab_file": "vocab_file.txt",
             "has_depth": True,
-            "depth_root": "coco/train2014/megadepth/"
+            "depth_root": "coco/images/megadepth/"
         },
         "refcoco+": {
-            "img_dir": "coco/train2014",
+            "img_dir": "coco/images/train2014",
             "ann_file": "coco/refcoco+/instances.json",
             "refer_file": "coco/refcoco+/refs(unc).p",
             "vocab_file": "True.txt",
             "has_depth": True,
-            "depth_root": "coco/train2014/megadepth/"
+            "depth_root": "coco/images/megadepth/"
         },
         "refcocogoogle": {
-            "img_dir": "coco/train2014",
+            "img_dir": "coco/images/train2014",
             "ann_file": "coco/refcoco/instances.json",
             "refer_file": "coco/refcoco/refs(google).p",
             "vocab_file": "vocab_file.txt",
             "has_depth": True,
-            "depth_root": "coco/train2014/megadepth/"
+            "depth_root": "coco/images/megadepth/"
         },
         "refcocounc": {
-            "img_dir": "coco/train2014",
+            "img_dir": "coco/images/train2014",
             "ann_file": "coco/refcoco/instances.json",
             "refer_file": "coco/refcoco/refs(unc).p",
             "vocab_file": "vocab_file.txt",
             "has_depth": True,
-            "depth_root": "coco/train2014/megadepth/"
+            "depth_root": "coco/images/megadepth/"
         },
         "sunrgbd_train": {
             "img_dir": "SUNRGBD/images",
