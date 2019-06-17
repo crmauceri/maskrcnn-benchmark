@@ -60,18 +60,22 @@ def do_train(
 
         scheduler.step()
 
-        loss_dict = model(batch, device, targets=batch['targets'])
+        try:
+            loss_dict = model(batch, device, targets=batch['targets'])
 
-        losses = sum(loss for loss in loss_dict.values())
+            losses = sum(loss for loss in loss_dict.values())
 
-        # reduce losses over all GPUs for logging purposes
-        loss_dict_reduced = reduce_loss_dict(loss_dict)
-        losses_reduced = sum(loss for loss in loss_dict_reduced.values())
-        meters.update(loss=losses_reduced, **loss_dict_reduced)
+            # reduce losses over all GPUs for logging purposes
+            loss_dict_reduced = reduce_loss_dict(loss_dict)
+            losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+            meters.update(loss=losses_reduced, **loss_dict_reduced)
 
-        optimizer.zero_grad()
-        losses.backward()
-        optimizer.step()
+            optimizer.zero_grad()
+            losses.backward()
+            optimizer.step()
+        except Exception as e:
+            print(e)
+            print(iteration['img_ids'])
 
         batch_time = time.time() - end
         end = time.time()
