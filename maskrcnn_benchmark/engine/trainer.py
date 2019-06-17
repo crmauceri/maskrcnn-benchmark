@@ -75,7 +75,7 @@ def do_train(
             optimizer.step()
         except Exception as e:
             print(e)
-            print(iteration['img_ids'])
+            print(batch['img_ids'])
 
         batch_time = time.time() - end
         end = time.time()
