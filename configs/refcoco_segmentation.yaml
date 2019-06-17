@@ -33,9 +33,9 @@ MODEL:
     SHARE_BOX_FEATURE_EXTRACTOR: False
   MASK_ON: True
 DATASETS:
-  DATACLASS: "HHADataset"
+  DATACLASS: "ReferExpressionDataset"
   TRAIN: ("refcocogoogle_train", "refcocogoogle_val")
-  TEST: ("refcocogoogle_test",)
+  TEST: ("refcocogoogle_test", "sunspot_test")
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:
