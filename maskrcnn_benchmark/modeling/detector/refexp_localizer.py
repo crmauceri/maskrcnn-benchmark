@@ -93,8 +93,9 @@ class DepthRCNN(nn.Module):
 
         return result, losses
 
-    def instance_prep(self, instance, device, targets):
-        images, HHAs = instance
+    def batch_prep(self, batch, device, targets):
+        images = batch['images']
+        HHAs = batch['HHAs']
 
         images = images.to(device)
         image_list = to_image_list(images)
@@ -117,7 +118,7 @@ class DepthRCNN(nn.Module):
                 p.requires_grad = False
 
 
-    def forward(self, instance, device, targets=None):
+    def forward(self, batch, device, targets=None):
         """
         Arguments:
             images (list[Tensor] or ImageList): images to be processed
@@ -130,7 +131,7 @@ class DepthRCNN(nn.Module):
                 like `scores`, `labels` and `mask` (for Mask R-CNN models).
 
         """
-        image_list, HHA_list = self.instance_prep(instance, device, targets)
+        image_list, HHA_list, targets = self.batch_prep(batch, device, targets)
 
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
@@ -196,9 +197,9 @@ class ReferExpRCNN(nn.Module):
         else:
             self.imagenet = None
 
-    def instance_prep(self, instance, device, seg_targets):
-        images, HHAs, sentences = instance
-        images, HHAs, seg_targets = self.refnet.instance_prep((images, HHAs), device, seg_targets)
+    def batch_prep(self, batch, device, seg_targets):
+        images, HHAs, seg_targets = self.refnet.batch_prep(batch, seg_targets)
+        sentences = batch['sentences']
 
         ref_targets = []
         if self.training:
@@ -231,7 +232,7 @@ class ReferExpRCNN(nn.Module):
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
 
-        image_list, HHA_list, sentences, seg_targets, ref_targets = self.instance_prep(instance, device, targets)
+        image_list, HHA_list, sentences, seg_targets, ref_targets = self.batch_prep(instance, device, targets)
 
         # Calculate image features
         image_features = self.refnet.features_forward(image_list, HHA_list)
@@ -312,10 +313,9 @@ class ReferExpRCNN_Old(DepthRCNN):
             self.ref_rpn = build_rpn(cfg, self.image_backbone.out_channels + 1024)
             self.ref_roi_heads = build_roi_heads(cfg, self.image_backbone.out_channels + 1024)
 
-    def instance_prep(self, instance, device, seg_targets):
-        images, HHAs, sentences = instance
-        images, HHAs, seg_targets = super().instance_prep((images, HHAs), device, seg_targets)
-
+    def batch_prep(self, batch, device, seg_targets):
+        images, HHAs, seg_targets = super().batch_prep(batch, device, seg_targets)
+        sentences = batch['sentences']
         sentences = [s.to(device) for s in sentences]
 
         ref_targets = []
@@ -354,7 +354,7 @@ class ReferExpRCNN_Old(DepthRCNN):
 
         return result, losses
 
-    def forward(self, instance, device, targets=None):
+    def forward(self, batch, device, targets=None):
         """
         Arguments:
             images (list[Tensor] or ImageList): images to be processed
@@ -369,7 +369,7 @@ class ReferExpRCNN_Old(DepthRCNN):
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
 
-        image_list, HHA_list, sentences, seg_targets, ref_targets = self.instance_prep(instance, device, targets)
+        image_list, HHA_list, sentences, seg_targets, ref_targets = self.batch_prep(batch, device, targets)
 
         # Calculate image features
         image_features = self.features_forward(image_list, HHA_list)

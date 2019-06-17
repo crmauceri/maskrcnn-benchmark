@@ -19,7 +19,9 @@ class BatchCollator(object):
         images = to_image_list(transposed_batch[0], self.size_divisible)
         targets = transposed_batch[1]
         img_ids = transposed_batch[2]
-        return images, targets, img_ids
+
+        batch = {'images': images, 'targets':targets, 'img_ids':img_ids}
+        return batch
 
 class HHACollator(object):
     """
@@ -42,7 +44,8 @@ class HHACollator(object):
         targets = transposed_batch[2]
         img_ids = transposed_batch[3]
 
-        return (images, HHAs), targets, img_ids
+        batch = {'images': images, 'HHAs':HHAs, 'targets': targets, 'img_ids': img_ids}
+        return batch
 
 class RefExpBatchCollator(object):
     """
@@ -65,4 +68,6 @@ class RefExpBatchCollator(object):
         targets = transposed_batch[3]
         img_ids = transposed_batch[4]
         sentences = transposed_batch[2]
-        return (images, HHAs, sentences), targets, img_ids
+
+        batch = {'images': images, 'HHAs': HHAs, 'sentences': sentences, 'targets': targets, 'img_ids': img_ids}
+        return batch
