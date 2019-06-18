@@ -75,25 +75,25 @@ class DatasetCatalog(object):
             "ann_file": "sunspot/annotations/instances.json"
         },
         "coco_2014_train": {
-            "img_dir": "coco/train2014",
+            "img_dir": "coco/images/train2014",
             "ann_file": "coco/annotations/instances_train2014_minus_refcocog.json",
             "has_depth": True,
             "depth_root": "coco/images/megadepth/"
         },
         "coco_2014_val": {
-            "img_dir": "coco/val2014",
+            "img_dir": "coco/images/val2014",
             "ann_file": "coco/annotations/instances_val2014.json",
             "has_depth": True,
             "depth_root": "coco/images/megadepth/"
         },
         "coco_2014_minival": {
-            "img_dir": "coco/val2014",
+            "img_dir": "coco/images/val2014",
             "ann_file": "coco/annotations/instances_minival2014.json",
             "has_depth": True,
             "depth_root": "coco/images/megadepth/"
         },
         "coco_2014_valminusminival": {
-            "img_dir": "coco/val2014",
+            "img_dir": "coco/images/val2014",
             "ann_file": "coco/annotations/instances_valminusminival2014.json",
             "has_depth": True,
             "depth_root": "coco/images/megadepth/"
