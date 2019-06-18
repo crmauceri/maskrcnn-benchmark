@@ -34,8 +34,8 @@ MODEL:
   MASK_ON: True
 DATASETS:
   DATACLASS: "HHADataset"
-  TRAIN: ("refcocogoogle_train", "refcocogoogle_val")
-  TEST: ("refcocogoogle_test",)
+  TRAIN: ("coco_2014_train", "coco_2014_valminusminival")
+  TEST: ("coco_2014_minival",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:

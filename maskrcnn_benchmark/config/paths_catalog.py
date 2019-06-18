@@ -74,102 +74,29 @@ class DatasetCatalog(object):
             "img_dir": "SUNRGBD/images",
             "ann_file": "sunspot/annotations/instances.json"
         },
-        "coco_2017_train": {
-            "img_dir": "coco/train2017",
-            "ann_file": "coco/annotations/instances_train2017.json"
-        },
-        "coco_2017_val": {
-            "img_dir": "coco/val2017",
-            "ann_file": "coco/annotations/instances_val2017.json"
-        },
         "coco_2014_train": {
             "img_dir": "coco/train2014",
-            "ann_file": "coco/annotations/instances_train2014.json"
+            "ann_file": "coco/annotations/instances_train2014_minus_refcocog.json",
+            "has_depth": True,
+            "depth_root": "coco/images/megadepth/"
         },
         "coco_2014_val": {
             "img_dir": "coco/val2014",
-            "ann_file": "coco/annotations/instances_val2014.json"
+            "ann_file": "coco/annotations/instances_val2014.json",
+            "has_depth": True,
+            "depth_root": "coco/images/megadepth/"
         },
         "coco_2014_minival": {
             "img_dir": "coco/val2014",
-            "ann_file": "coco/annotations/instances_minival2014.json"
+            "ann_file": "coco/annotations/instances_minival2014.json",
+            "has_depth": True,
+            "depth_root": "coco/images/megadepth/"
         },
         "coco_2014_valminusminival": {
             "img_dir": "coco/val2014",
-            "ann_file": "coco/annotations/instances_valminusminival2014.json"
-        },
-        "keypoints_coco_2014_train": {
-            "img_dir": "coco/train2014",
-            "ann_file": "coco/annotations/person_keypoints_train2014.json",
-        },
-        "keypoints_coco_2014_val": {
-            "img_dir": "coco/val2014",
-            "ann_file": "coco/annotations/person_keypoints_val2014.json"
-        },
-        "keypoints_coco_2014_minival": {
-            "img_dir": "coco/val2014",
-            "ann_file": "coco/annotations/person_keypoints_minival2014.json",
-        },
-        "keypoints_coco_2014_valminusminival": {
-            "img_dir": "coco/val2014",
-            "ann_file": "coco/annotations/person_keypoints_valminusminival2014.json",
-        },
-        "voc_2007_train": {
-            "data_dir": "voc/VOC2007",
-            "split": "train"
-        },
-        "voc_2007_train_cocostyle": {
-            "img_dir": "voc/VOC2007/JPEGImages",
-            "ann_file": "voc/VOC2007/Annotations/pascal_train2007.json"
-        },
-        "voc_2007_val": {
-            "data_dir": "voc/VOC2007",
-            "split": "val"
-        },
-        "voc_2007_val_cocostyle": {
-            "img_dir": "voc/VOC2007/JPEGImages",
-            "ann_file": "voc/VOC2007/Annotations/pascal_val2007.json"
-        },
-        "voc_2007_test": {
-            "data_dir": "voc/VOC2007",
-            "split": "test"
-        },
-        "voc_2007_test_cocostyle": {
-            "img_dir": "voc/VOC2007/JPEGImages",
-            "ann_file": "voc/VOC2007/Annotations/pascal_test2007.json"
-        },
-        "voc_2012_train": {
-            "data_dir": "voc/VOC2012",
-            "split": "train"
-        },
-        "voc_2012_train_cocostyle": {
-            "img_dir": "voc/VOC2012/JPEGImages",
-            "ann_file": "voc/VOC2012/Annotations/pascal_train2012.json"
-        },
-        "voc_2012_val": {
-            "data_dir": "voc/VOC2012",
-            "split": "val"
-        },
-        "voc_2012_val_cocostyle": {
-            "img_dir": "voc/VOC2012/JPEGImages",
-            "ann_file": "voc/VOC2012/Annotations/pascal_val2012.json"
-        },
-        "voc_2012_test": {
-            "data_dir": "voc/VOC2012",
-            "split": "test"
-            # PASCAL VOC2012 doesn't made the test annotations available, so there's no json annotation
-        },
-        "cityscapes_fine_instanceonly_seg_train_cocostyle": {
-            "img_dir": "cityscapes/images",
-            "ann_file": "cityscapes/annotations/instancesonly_filtered_gtFine_train.json"
-        },
-        "cityscapes_fine_instanceonly_seg_val_cocostyle": {
-            "img_dir": "cityscapes/images",
-            "ann_file": "cityscapes/annotations/instancesonly_filtered_gtFine_val.json"
-        },
-        "cityscapes_fine_instanceonly_seg_test_cocostyle": {
-            "img_dir": "cityscapes/images",
-            "ann_file": "cityscapes/annotations/instancesonly_filtered_gtFine_test.json"
+            "ann_file": "coco/annotations/instances_valminusminival2014.json",
+            "has_depth": True,
+            "depth_root": "coco/images/megadepth/"
         }
     }
 
@@ -177,14 +104,12 @@ class DatasetCatalog(object):
     def get(name, dataclass):
         if dataclass == 'HHADataset':
             data_dir = DatasetCatalog.DATA_DIR
-            attrs = DatasetCatalog.DATASETS[name.split('_')[0]]
+            attrs = DatasetCatalog.DATASETS[name]
             args = dict(
                 img_root=os.path.join(data_dir, attrs["img_dir"]),
                 ann_file=os.path.join(data_dir, attrs["ann_file"]),
                 has_depth=attrs["has_depth"],
                 depth_root=os.path.join(data_dir, attrs["depth_root"]) if "depth_root" in attrs else None,
-                active_split=name.split('_')[1],
-                exclude_list=attrs["exclude_list"] if "exclude_list" in attrs else []
             )
             return dict(
                 factory="HHADataset",
@@ -218,17 +143,6 @@ class DatasetCatalog(object):
                 factory="COCODataset",
                 args=args,
             )
-        elif dataclass == 'PascalVOCDataset':
-                data_dir = DatasetCatalog.DATA_DIR
-                attrs = DatasetCatalog.DATASETS[name]
-                args = dict(
-                    data_dir=os.path.join(data_dir, attrs["data_dir"]),
-                    split=attrs["split"],
-                )
-                return dict(
-                    factory="PascalVOCDataset",
-                    args=args,
-                )
         else:
             raise RuntimeError("Dataset not available: {}".format(dataclass))
 
